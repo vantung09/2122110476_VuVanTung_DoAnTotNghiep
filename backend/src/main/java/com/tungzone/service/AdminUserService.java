@@ -1,10 +1,12 @@
 package com.tungzone.service;
 
 import com.tungzone.dto.user.UserAdminResponse;
+import com.tungzone.dto.user.UserCreateRequest;
 import com.tungzone.entity.Role;
 import com.tungzone.entity.User;
 import com.tungzone.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,9 +15,26 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AdminUserService {
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public List<UserAdminResponse> getAllUsers() {
         return userRepository.findAll().stream().map(this::toResponse).toList();
+    }
+
+    public UserAdminResponse createUser(UserCreateRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+        if (userRepository.existsByEmail(email)) {
+            throw new RuntimeException("Email đã tồn tại");
+        }
+
+        User user = User.builder()
+                .fullName(request.getFullName().trim())
+                .email(email)
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(Role.valueOf(request.getRole().trim().toUpperCase()))
+                .build();
+
+        return toResponse(userRepository.save(user));
     }
 
     public UserAdminResponse updateRole(Long id, String roleValue) {

@@ -2,11 +2,34 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Doctor: Check Env/Ports",
+      "type": "shell",
+      "command": "${workspaceFolder}\\doctor.cmd",
+      "problemMatcher": []
+    },
+    {
+      "label": "Microservices: Start All",
+      "type": "shell",
+      "command": "${workspaceFolder}\\start-all.cmd",
+      "problemMatcher": []
+    },
+    {
+      "label": "Microservices: Stop All",
+      "type": "shell",
+      "command": "${workspaceFolder}\\stop-all.cmd",
+      "problemMatcher": []
+    },
+    {
       "label": "Backend: Spring Boot Run",
       "type": "shell",
       "command": "mvn spring-boot:run",
       "options": {
-        "cwd": "${workspaceFolder}/backend"
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "JAVA_HOME": "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.18.8-hotspot",
+          "MAVEN_HOME": "C:\\maven\\apache-maven-3.9.12",
+          "PATH": "C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.18.8-hotspot\\bin;C:\\maven\\apache-maven-3.9.12\\bin;${env:PATH}"
+        }
       },
       "problemMatcher": []
     },

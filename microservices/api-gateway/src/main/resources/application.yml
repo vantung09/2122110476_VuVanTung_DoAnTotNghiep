@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: tungzone-api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns:
+              - "http://localhost:*"
+              - "http://127.0.0.1:*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
+      routes:
+        - id: auth-service
+          uri: lb://tungzone-auth-service
+          predicates:
+            - Path=/api/auth/**,/api/admin/users/**,/api/users/**
+        - id: catalog-service-api
+          uri: lb://tungzone-catalog-service
+          predicates:
+            - Path=/api/products/**,/api/admin/products/**,/api/admin/categories/**,/api/admin/uploads/**
+        - id: catalog-service-images
+          uri: lb://tungzone-catalog-service
+          predicates:
+            - Path=/images/**
+        - id: order-service
+          uri: lb://tungzone-order-service
+          predicates:
+            - Path=/api/admin/orders/**,/api/orders/**
+        - id: payment-service
+          uri: lb://tungzone-payment-service
+          predicates:
+            - Path=/api/payments/momo/**,/api/admin/payments/**
+server:
+  port: 8080
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    prefer-ip-address: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway

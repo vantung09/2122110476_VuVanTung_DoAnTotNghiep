@@ -12,4 +12,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @EntityGraph(attributePaths = {"user", "items", "items.product"})
     java.util.Optional<Order> findDetailedById(Long id);
+
+    @EntityGraph(attributePaths = {"user", "items", "items.product"})
+    List<Order> findAllByUser_EmailOrderByIdDesc(String email);
+
+    @EntityGraph(attributePaths = {"user", "items", "items.product"})
+    java.util.Optional<Order> findDetailedByIdAndUser_Email(Long id, String email);
 }

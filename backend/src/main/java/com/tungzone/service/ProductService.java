@@ -13,6 +13,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductService {
     private final ProductRepository productRepository;
+    private final CategoryService categoryService;
 
     public List<ProductResponse> getPublicProducts() {
         return productRepository.findByActiveTrueOrderByIdDesc().stream().map(this::toResponse).toList();
@@ -25,19 +26,22 @@ public class ProductService {
     }
 
     public List<ProductResponse> getAllProductsForAdmin() {
-        return productRepository.findAll().stream().map(this::toResponse).toList();
+        return productRepository.findAllByOrderByIdDesc().stream().map(this::toResponse).toList();
     }
 
     public ProductResponse create(ProductRequest request) {
+        String categoryName = normalizeCategory(request.getCategory());
+        categoryService.ensureCategoryExists(categoryName);
+
         Product product = Product.builder()
                 .name(request.getName())
                 .brand(request.getBrand())
                 .price(request.getPrice())
                 .originalPrice(request.getOriginalPrice())
                 .stock(request.getStock())
-                .imageUrl(request.getImageUrl())
+                .imageUrl(normalizeImageUrl(request.getImageUrl()))
                 .description(request.getDescription())
-                .category(request.getCategory())
+                .category(categoryName)
                 .active(request.getActive() == null ? true : request.getActive())
                 .build();
         return toResponse(productRepository.save(product));
@@ -52,9 +56,11 @@ public class ProductService {
         product.setPrice(request.getPrice());
         product.setOriginalPrice(request.getOriginalPrice());
         product.setStock(request.getStock());
-        product.setImageUrl(request.getImageUrl());
+        product.setImageUrl(normalizeImageUrl(request.getImageUrl()));
         product.setDescription(request.getDescription());
-        product.setCategory(request.getCategory());
+        String categoryName = normalizeCategory(request.getCategory());
+        categoryService.ensureCategoryExists(categoryName);
+        product.setCategory(categoryName);
         product.setActive(request.getActive() == null ? true : request.getActive());
 
         return toResponse(productRepository.save(product));
@@ -80,5 +86,17 @@ public class ProductService {
                 .category(product.getCategory())
                 .active(product.getActive())
                 .build();
+    }
+
+    private String normalizeCategory(String value) {
+        return value == null ? "" : value.trim().replaceAll("\\s+", " ");
+    }
+
+    private String normalizeImageUrl(String value) {
+        if (value == null) {
+            return null;
+        }
+        String cleaned = value.trim();
+        return cleaned.isEmpty() ? null : cleaned;
     }
 }

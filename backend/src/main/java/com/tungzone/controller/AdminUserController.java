@@ -2,6 +2,7 @@ package com.tungzone.controller;
 
 import com.tungzone.dto.common.ApiMessageResponse;
 import com.tungzone.dto.user.UserAdminResponse;
+import com.tungzone.dto.user.UserCreateRequest;
 import com.tungzone.dto.user.UserRoleUpdateRequest;
 import com.tungzone.service.AdminUserService;
 import jakarta.validation.Valid;
@@ -21,6 +22,11 @@ public class AdminUserController {
     @GetMapping
     public List<UserAdminResponse> getAllUsers() {
         return adminUserService.getAllUsers();
+    }
+
+    @PostMapping
+    public UserAdminResponse createUser(@Valid @RequestBody UserCreateRequest request) {
+        return adminUserService.createUser(request);
     }
 
     @PutMapping("/{id}/role")

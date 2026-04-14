@@ -870,7 +870,7 @@ public class DataSeeder implements CommandLineRunner {
                 existing.setStock(seed.stock());
                 dirty = true;
             }
-            if (shouldUpdateImage(existing.getImageUrl()) && !isBlank(seed.imageUrl())) {
+            if (shouldUpdateImage(existing.getImageUrl(), seed.imageUrl())) {
                 existing.setImageUrl(seed.imageUrl());
                 dirty = true;
             }
@@ -901,14 +901,23 @@ public class DataSeeder implements CommandLineRunner {
                 .build()));
     }
 
-    private boolean shouldUpdateImage(String currentUrl) {
+    private boolean shouldUpdateImage(String currentUrl, String seedUrl) {
+        if (isBlank(seedUrl)) {
+            return false;
+        }
         if (isBlank(currentUrl)) {
             return true;
         }
         String normalized = currentUrl.toLowerCase();
-        return normalized.contains("unsplash")
+        if (normalized.contains("/images/uploads/")) {
+            return false;
+        }
+        if (normalized.contains("unsplash")
                 || normalized.contains("placeholder")
-                || normalized.contains("via.placeholder");
+                || normalized.contains("via.placeholder")) {
+            return true;
+        }
+        return !currentUrl.equals(seedUrl);
     }
 
     private boolean isBlank(String value) {

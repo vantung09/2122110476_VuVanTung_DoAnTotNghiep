@@ -16,6 +16,7 @@ import com.tungzone.util.MomoSignatureUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class MomoPaymentService {
+    private static final long MOMO_MAX_AMOUNT_VND = 50_000_000L;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
@@ -51,22 +53,33 @@ public class MomoPaymentService {
 
     public MomoCreatePaymentResponse createPayment(MomoCreatePaymentRequest request, String email) {
         if (request == null || request.items() == null || request.items().isEmpty()) {
-            throw new IllegalArgumentException("Danh sách sản phẩm trống.");
+            throw new IllegalArgumentException("Danh sÃ¡ch sáº£n pháº©m trá»‘ng.");
         }
         if (isBlank(partnerCode) || isBlank(accessKey) || isBlank(secretKey)) {
-            throw new IllegalStateException("Thiếu cấu hình MoMo.");
+            throw new IllegalStateException("Thiáº¿u cáº¥u hÃ¬nh MoMo.");
         }
         if (isBlank(ipnUrl)) {
-            throw new IllegalStateException("Thiếu cấu hình ipnUrl MoMo.");
+            throw new IllegalStateException("Thiáº¿u cáº¥u hÃ¬nh ipnUrl MoMo.");
         }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng."));
+        String normalizedEmail = email != null ? email.trim().toLowerCase() : null;
+        if (isBlank(normalizedEmail)) {
+            throw new IllegalArgumentException("Khong tim thay nguoi dung.");
+        }
+
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay nguoi dung."));
 
         Order order = buildOrder(user, request.items());
-        orderRepository.save(order);
-
         long amount = Math.round(order.getTotalAmount());
+        if (amount <= 0) {
+            throw new IllegalArgumentException("So tien thanh toan khong hop le.");
+        }
+        if (amount > MOMO_MAX_AMOUNT_VND) {
+            throw new IllegalArgumentException("Han muc MoMo toi da 50.000.000 VND moi giao dich.");
+        }
+
+        orderRepository.save(order);
         String orderId = order.getId().toString();
         String requestId = "REQ_" + UUID.randomUUID();
         String orderInfo = isBlank(request.orderInfo())
@@ -102,9 +115,14 @@ public class MomoPaymentService {
         payload.put("signature", signature);
 
         RestTemplate restTemplate = new RestTemplate();
-        MomoCreateResponse response = restTemplate.postForObject(endpoint, payload, MomoCreateResponse.class);
+        MomoCreateResponse response;
+        try {
+            response = restTemplate.postForObject(endpoint, payload, MomoCreateResponse.class);
+        } catch (HttpStatusCodeException exception) {
+            throw new IllegalStateException(extractMomoMessage(exception.getResponseBodyAsString()));
+        }
         if (response == null || response.resultCode() == null || response.resultCode() != 0) {
-            String message = response != null ? response.message() : "Không tạo được thanh toán MoMo.";
+            String message = response != null ? response.message() : "KhÃ´ng táº¡o Ä‘Æ°á»£c thanh toÃ¡n MoMo.";
             throw new IllegalStateException(message);
         }
 
@@ -123,7 +141,7 @@ public class MomoPaymentService {
                 continue;
             }
             Product product = productRepository.findById(item.productId())
-                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sản phẩm."));
+                    .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y sáº£n pháº©m."));
             double price = product.getPrice() != null ? product.getPrice() : 0;
             total += price * item.quantity();
 
@@ -136,7 +154,7 @@ public class MomoPaymentService {
         }
 
         if (orderItems.isEmpty()) {
-            throw new IllegalArgumentException("Danh sách sản phẩm trống.");
+            throw new IllegalArgumentException("Danh sÃ¡ch sáº£n pháº©m trá»‘ng.");
         }
 
         order.setItems(orderItems);
@@ -147,4 +165,22 @@ public class MomoPaymentService {
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
+
+    private String extractMomoMessage(String rawBody) {
+        if (isBlank(rawBody)) {
+            return "Khong tao duoc thanh toan MoMo.";
+        }
+        String marker = "\"message\":\"";
+        int start = rawBody.indexOf(marker);
+        if (start < 0) {
+            return rawBody;
+        }
+        int from = start + marker.length();
+        int end = rawBody.indexOf("\"", from);
+        if (end <= from) {
+            return rawBody;
+        }
+        return rawBody.substring(from, end);
+    }
 }
+

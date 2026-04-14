@@ -37,7 +37,19 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const value = useMemo(() => ({ user, login, logout }), [user]);
+  const updateUser = (payload) => {
+    if (!user) return;
+    const nextUser = {
+      ...user,
+      ...payload,
+    };
+    if (nextUser.fullName != null) localStorage.setItem("fullName", nextUser.fullName);
+    if (nextUser.email != null) localStorage.setItem("email", nextUser.email);
+    if (nextUser.role != null) localStorage.setItem("role", nextUser.role);
+    setUser(nextUser);
+  };
+
+  const value = useMemo(() => ({ user, login, logout, updateUser }), [user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
