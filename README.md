@@ -314,3 +314,31 @@ app.momo.redirect-url=https://<frontend-ngrok-domain>/cart
 - Ảnh upload của admin được lưu mặc định tại `backend/uploads`
 - Ảnh có thể truy cập qua `http://localhost:8080/images/uploads/{fileName}`
 - Dữ liệu demo được seed khi backend chạy lần đầu
+
+## Deploy online (Vercel + backend cloud)
+
+Frontend trên Vercel chỉ tải được dữ liệu khi backend và MySQL cũng chạy online.
+
+### 1) Deploy backend Spring Boot
+
+Bạn có thể deploy thư mục `backend/` lên Render/Railway:
+
+- Build command: `mvn clean package -DskipTests`
+- Start command: `java -jar target/tungzone-backend-1.0.0.jar`
+
+Biến môi trường tối thiểu cho backend:
+
+- `DB_URL`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+- `JWT_SECRET`
+- `CORS_ALLOWED_ORIGIN_PATTERNS` (ví dụ: `http://localhost:*,http://127.0.0.1:*,https://*.vercel.app`)
+
+### 2) Cấu hình frontend trên Vercel
+
+Trong Vercel Project -> Settings -> Environment Variables:
+
+- `VITE_BACKEND_BASE_URL=https://<your-backend-domain>`
+- `VITE_API_BASE_URL=https://<your-backend-domain>/api`
+
+Sau đó redeploy frontend để nhận biến mới.
