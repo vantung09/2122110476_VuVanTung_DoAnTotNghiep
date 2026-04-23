@@ -497,7 +497,7 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                         />
                         Ghi nhớ đăng nhập
                       </label>
-                      <button type="button" className="font-medium text-zinc-900 hover:underline">
+                      <button type="button" className="font-medium text-zinc-900 hover:underline" onClick={() => navigate("/forgot-password")}>
                         Quên mật khẩu?
                       </button>
                     </div>

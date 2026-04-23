@@ -6,8 +6,10 @@ import StoreActionButton, {
   StoreCheckIcon,
   StoreHeartIcon,
 } from "../components/StoreActionButton";
+import ProductReviews from "../components/ProductReviews";
 import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoriteContext";
+import { useCompare } from "../contexts/CompareContext";
 import { getFallbackImage, getProductImageUrl, handleProductImageError } from "../utils/productImage";
 
 const CATEGORY_VARIANTS = {
@@ -468,6 +470,7 @@ export default function ProductDetailPage() {
   const [favoriteAnimated, setFavoriteAnimated] = useState(false);
   const { addToCart } = useCart();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { addToCompare, isInCompare, removeFromCompare, count: compareCount } = useCompare();
 
   useEffect(() => {
     let cancelled = false;
@@ -819,6 +822,14 @@ export default function ProductDetailPage() {
               >
                 {favorite ? "Đã yêu thích" : "Yêu thích"}
               </StoreActionButton>
+
+              <button
+                className={`btn ${isInCompare(product.id) ? "btn-secondary" : "btn-primary"} btn-sm`}
+                type="button"
+                onClick={() => isInCompare(product.id) ? removeFromCompare(product.id) : addToCompare(product)}
+              >
+                {isInCompare(product.id) ? "Đã so sánh" : "So sánh"}
+              </button>
             </div>
           </aside>
         </div>
@@ -1022,6 +1033,10 @@ export default function ProductDetailPage() {
             ) : null}
           </aside>
         </div>
+      </section>
+
+      <section className="tzdetail-reviews-section">
+        <ProductReviews productId={Number(id)} />
       </section>
     </div>
   );

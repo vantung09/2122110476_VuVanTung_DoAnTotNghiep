@@ -4,8 +4,9 @@ import axiosClient from "../api/axiosClient";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoriteContext";
-import logo from "../assets/tungzone-logo.png";
-import defaultAvatar from "../assets/default-avatar.jpg";
+import { useCompare } from "../contexts/CompareContext";
+import NotificationBell from "./NotificationBell";
+import logo from "../assets/tungzone-logo.svg";
 
 const NAV_ITEMS = [
   { key: "iphone", label: "iPhone" },
@@ -31,6 +32,7 @@ export default function Header() {
   const { user, logout } = useAuth();
   const { count: cartCount } = useCart();
   const { count: favoriteCount } = useFavorites();
+  const { count: compareCount } = useCompare();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -199,6 +201,24 @@ export default function Header() {
         },
       ],
     },
+    {
+      key: "features",
+      title: "Tiện ích",
+      items: [
+        {
+          key: "tracking",
+          label: "Theo dõi đơn hàng",
+          hint: "Xem vị trí và trạng thái giao hàng",
+          action: () => navigate("/tracking"),
+        },
+        {
+          key: "compare",
+          label: "So sánh sản phẩm",
+          hint: `${compareCount} sản phẩm đang so sánh`,
+          action: () => navigate("/compare"),
+        },
+      ],
+    },
     ...(isAdmin
       ? [
           {
@@ -244,6 +264,15 @@ export default function Header() {
             </svg>
           </button>
 
+          <NotificationBell />
+
+          <Link to="/compare" className="icon-button icon-button-compare" aria-label="So sánh">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+              <path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm0 16H5V5h4v14Zm10-10h-4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm0 10h-4v-8h4v8Z" fill="currentColor" />
+            </svg>
+            {compareCount > 0 && <span className="icon-badge">{compareCount}</span>}
+          </Link>
+
           <Link to="/favorites" className="icon-button icon-button-fav" aria-label="Yêu thích">
             <img src="/icons/heart.png" alt="" className="icon-image" />
             {favoriteCount > 0 && <span className="icon-badge">{favoriteCount}</span>}
@@ -266,12 +295,7 @@ export default function Header() {
                 {avatarLoadError ? (
                   <span className="header-avatar-fallback">{userInitials}</span>
                 ) : (
-                  <img
-                    src={defaultAvatar}
-                    alt="Avatar mặc định"
-                    className="header-avatar-image"
-                    onError={() => setAvatarLoadError(true)}
-                  />
+                  <span className="header-avatar-fallback">{userInitials}</span>
                 )}
               </button>
 

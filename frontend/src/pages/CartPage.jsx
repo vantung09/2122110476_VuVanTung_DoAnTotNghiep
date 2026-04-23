@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
+import { useCoupon } from "../contexts/CouponContext";
+import CouponInput from "../components/CouponInput";
 import { getProductImageUrl, handleProductImageError } from "../utils/productImage";
 
 const MOMO_MAX_AMOUNT_VND = 50000000;
@@ -100,6 +102,7 @@ function extractApiErrorMessage(data) {
 export default function CartPage() {
   const { items, total, updateQuantity, removeFromCart, clearCart } = useCart();
   const { user } = useAuth();
+  const { calculateDiscount, appliedCoupon, recordUsage } = useCoupon();
   const navigate = useNavigate();
   const location = useLocation();
   const checkoutRef = useRef(null);
@@ -180,6 +183,8 @@ export default function CartPage() {
   };
 
   const totalAmount = Math.round(Number(total || 0));
+  const couponDiscount = calculateDiscount(totalAmount);
+  const finalAmount = Math.max(0, totalAmount - couponDiscount);
   const phoneDigits = extractPhoneDigits(customer.phone);
   const isNameValid = customer.name.trim().length >= 2;
   const isPhoneValid = VIETNAM_PHONE_PATTERN.test(phoneDigits);
@@ -328,6 +333,19 @@ export default function CartPage() {
               <span>Tạm tính</span>
               <strong>{Number(total).toLocaleString("vi-VN")} đ</strong>
             </p>
+            {couponDiscount > 0 ? (
+              <p className="summary-row coupon-discount-row">
+                <span>Giảm giá ({appliedCoupon?.code})</span>
+                <strong>-{couponDiscount.toLocaleString("vi-VN")} đ</strong>
+              </p>
+            ) : null}
+            {couponDiscount > 0 ? (
+              <p className="summary-row">
+                <span>Tổng thanh toán</span>
+                <strong>{finalAmount.toLocaleString("vi-VN")} đ</strong>
+              </p>
+            ) : null}
+            <CouponInput orderAmount={totalAmount} />
             {!user ? <p className="muted">Đăng nhập để tiếp tục thanh toán.</p> : null}
             <button className="btn btn-primary btn-block" type="button" onClick={handleCheckout}>
               {user ? "Tiến hành đặt hàng" : "Đăng nhập để thanh toán"}

@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
 import ProductCard from "../components/ProductCard";
+import SearchHistoryDropdown from "../components/SearchHistoryDropdown";
+import { useSearchHistory } from "../contexts/SearchHistoryContext";
 
 const CATEGORY_CHIPS = [
   { key: "", label: "Tất cả" },
@@ -45,6 +47,9 @@ export default function HomePage() {
   const [bannerIndex, setBannerIndex] = useState(0);
   const [sortKey, setSortKey] = useState("featured");
   const [searchParams, setSearchParams] = useSearchParams();
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
+  const searchInputRef = useRef(null);
+  const { addSearch } = useSearchHistory();
 
   const catalogProducts = useMemo(
     () => products.filter((item) => String(item.category || "").toLowerCase() !== "banner"),
@@ -324,13 +329,27 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="search-mini">
+          <div className="search-mini" style={{ position: "relative" }}>
             <input
               className="input"
               placeholder="Tìm theo tên, thương hiệu, danh mục..."
               value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
+              onChange={(event) => {
+                setKeyword(event.target.value);
+                if (event.target.value.trim()) addSearch(event.target.value);
+              }}
+              onFocus={() => setShowSearchHistory(true)}
+              onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
               id="site-search-input"
+              ref={searchInputRef}
+            />
+            <SearchHistoryDropdown
+              visible={showSearchHistory && !keyword}
+              onSelect={(q) => {
+                setKeyword(q);
+                addSearch(q);
+                setShowSearchHistory(false);
+              }}
             />
           </div>
         </div>
