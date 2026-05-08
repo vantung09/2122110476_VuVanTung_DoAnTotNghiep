@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
+import { useAdminAuth } from "../contexts/AdminAuthContext";
 
 const adminLinks = [
   { to: "/admin", label: "Tổng quan", end: true },
@@ -11,7 +11,7 @@ const adminLinks = [
 ];
 
 export default function AdminShell({ title, subtitle, actions, children }) {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAdminAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -53,7 +53,7 @@ export default function AdminShell({ title, subtitle, actions, children }) {
             </span>
             <div>
               <strong>{user?.fullName || "Quản trị viên"}</strong>
-              <p>{user?.email || "admin@tungzone.com"}</p>
+              <p>{user?.email || "Chưa đăng nhập"}</p>
             </div>
           </div>
 
@@ -61,9 +61,6 @@ export default function AdminShell({ title, subtitle, actions, children }) {
             <button className="admin-ghost-button" type="button" onClick={handleLogout}>
               Đăng xuất
             </button>
-            <Link to="/" className="admin-ghost-link">
-              Quay lại cửa hàng
-            </Link>
           </div>
         </div>
       </aside>

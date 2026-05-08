@@ -66,7 +66,7 @@ export function CartProvider({ children }) {
           imageUrl: product.imageUrl,
           price: product.price,
           originalPrice: product.originalPrice,
-          category: product.category,
+          category: product.categoryName,
           brand: product.brand,
           quantity,
         });

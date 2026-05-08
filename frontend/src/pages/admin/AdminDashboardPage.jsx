@@ -125,7 +125,7 @@ export default function AdminDashboardPage() {
 
   const categoryData = useMemo(() => {
     const groups = products.reduce((accumulator, product) => {
-      const category = normalizeCategory(product.category);
+      const category = normalizeCategory(product.categoryName);
       accumulator[category] = (accumulator[category] || 0) + 1;
       return accumulator;
     }, {});
@@ -382,7 +382,7 @@ export default function AdminDashboardPage() {
                     />
                   </div>
                   <strong>{product.name}</strong>
-                  <p>{product.category}</p>
+                  <p>{product.categoryName}</p>
                   <span>{formatCurrency(product.price)}</span>
                 </article>
               ))}

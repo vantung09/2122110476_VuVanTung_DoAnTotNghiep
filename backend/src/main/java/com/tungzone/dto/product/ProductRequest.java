@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 public class ProductRequest {
     @NotBlank(message = "Tên sản phẩm không được để trống")
@@ -25,7 +27,20 @@ public class ProductRequest {
     private Integer stock;
 
     private String imageUrl;
+    private Boolean flashSale;
+    private LocalDateTime flashSaleStartAt;
+    private LocalDateTime flashSaleEndAt;
+
+    @Min(value = 0, message = "So luong flash sale phai lon hon hoac bang 0")
+    private Integer flashSaleQuantity;
+
+    @Min(value = 0, message = "So luong da ban phai lon hon hoac bang 0")
+    private Integer flashSaleSold;
+
     private String description;
-    private String category;
+
+    @NotBlank(message = "Danh mục không được để trống")
+    private String categoryName;
+
     private Boolean active;
 }

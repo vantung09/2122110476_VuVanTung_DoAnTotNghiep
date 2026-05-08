@@ -1,40 +1,53 @@
 package com.tungzone.config;
 
+import com.tungzone.entity.Category;
 import com.tungzone.entity.Order;
 import com.tungzone.entity.OrderItem;
 import com.tungzone.entity.OrderStatus;
 import com.tungzone.entity.Product;
 import com.tungzone.entity.Role;
 import com.tungzone.entity.User;
+import com.tungzone.repository.CategoryRepository;
 import com.tungzone.repository.OrderRepository;
 import com.tungzone.repository.ProductRepository;
 import com.tungzone.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
+    private static final String LEGACY_ADMIN_EMAIL = "admin" + "@tungzone.com";
+    private static final String LEGACY_ADMIN_FULL_NAME = "System Admin";
+
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
     private final OrderRepository orderRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${app.seed.admin.email:}")
+    private String seedAdminEmail;
+
+    @Value("${app.seed.admin.password:}")
+    private String seedAdminPassword;
+
+    @Value("${app.seed.admin.full-name:System Admin}")
+    private String seedAdminFullName;
+
     @Override
     public void run(String... args) {
-        User admin = userRepository.findByEmail("admin@tungzone.com").orElseGet(() ->
-                userRepository.save(User.builder()
-                        .fullName("System Admin")
-                        .email("admin@tungzone.com")
-                        .password(passwordEncoder.encode("admin123"))
-                        .role(Role.ADMIN)
-                        .build())
-        );
+        neutralizeLegacyDefaultAdmin();
+        seedConfiguredAdmin();
 
         User user = userRepository.findByEmail("user@tungzone.com").orElseGet(() ->
                 userRepository.save(User.builder()
@@ -44,6 +57,15 @@ public class DataSeeder implements CommandLineRunner {
                         .role(Role.USER)
                         .build())
         );
+
+        List<String> categoryNames = List.of(
+                "iPhone", "iPad", "Mac", "Watch", "Tai nghe", "Phụ kiện", "Âm thanh", "Banner"
+        );
+        for (String name : categoryNames) {
+            if (!categoryRepository.existsByNameIgnoreCase(name)) {
+                categoryRepository.save(Category.builder().name(name).active(true).build());
+            }
+        }
 
         String imageBaseUrl = "http://localhost:8080/images/";
         String assetBaseUrl = "http://localhost:8080/images/hinhanh/";
@@ -817,7 +839,7 @@ public class DataSeeder implements CommandLineRunner {
 
         if (orderRepository.count() == 0) {
             List<Product> orderCandidates = seededProducts.stream()
-                    .filter(product -> !"Banner".equalsIgnoreCase(product.getCategory()))
+                    .filter(product -> product.getCategory() != null && !"Banner".equalsIgnoreCase(product.getCategory().getName()))
                     .toList();
 
             if (orderCandidates.size() >= 2) {
@@ -850,6 +872,55 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 
+    private void neutralizeLegacyDefaultAdmin() {
+        userRepository.findByEmail(LEGACY_ADMIN_EMAIL).ifPresent(admin -> {
+            boolean configuredAsRealAdmin = !isBlank(seedAdminEmail)
+                    && LEGACY_ADMIN_EMAIL.equalsIgnoreCase(seedAdminEmail.trim());
+            if (!configuredAsRealAdmin
+                    && admin.getRole() == Role.ADMIN
+                    && LEGACY_ADMIN_FULL_NAME.equals(admin.getFullName())) {
+                admin.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+                userRepository.save(admin);
+                log.warn("Legacy default admin credentials were found and rotated. Configure SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD for a real admin account.");
+            }
+        });
+    }
+
+    private void seedConfiguredAdmin() {
+        if (isBlank(seedAdminEmail) && isBlank(seedAdminPassword)) {
+            return;
+        }
+        if (isBlank(seedAdminEmail) || isBlank(seedAdminPassword)) {
+            throw new IllegalStateException("SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be configured together.");
+        }
+        if (seedAdminPassword.trim().length() < 8) {
+            throw new IllegalStateException("SEED_ADMIN_PASSWORD must be at least 8 characters.");
+        }
+
+        String email = seedAdminEmail.trim().toLowerCase();
+        userRepository.findByEmail(email).ifPresentOrElse(existing -> {
+            boolean dirty = false;
+            existing.setPassword(passwordEncoder.encode(seedAdminPassword.trim()));
+            dirty = true;
+            if (existing.getRole() != Role.ADMIN) {
+                existing.setRole(Role.ADMIN);
+                dirty = true;
+            }
+            if (isBlank(existing.getFullName()) && !isBlank(seedAdminFullName)) {
+                existing.setFullName(seedAdminFullName.trim());
+                dirty = true;
+            }
+            if (dirty) {
+                userRepository.save(existing);
+            }
+        }, () -> userRepository.save(User.builder()
+                .fullName(isBlank(seedAdminFullName) ? "System Admin" : seedAdminFullName.trim())
+                .email(email)
+                .password(passwordEncoder.encode(seedAdminPassword.trim()))
+                .role(Role.ADMIN)
+                .build()));
+    }
+
     private Product upsertProduct(ProductSeed seed) {
         return productRepository.findByName(seed.name()).map(existing -> {
             boolean dirty = false;
@@ -878,8 +949,8 @@ public class DataSeeder implements CommandLineRunner {
                 existing.setDescription(seed.description());
                 dirty = true;
             }
-            if (isBlank(existing.getCategory()) && !isBlank(seed.category())) {
-                existing.setCategory(seed.category());
+            if (existing.getCategory() == null && !isBlank(seed.category())) {
+                existing.setCategory(categoryRepository.findByNameIgnoreCase(seed.category()).orElse(null));
                 dirty = true;
             }
             if (existing.getActive() == null && seed.active() != null) {
@@ -896,7 +967,7 @@ public class DataSeeder implements CommandLineRunner {
                 .stock(seed.stock())
                 .imageUrl(seed.imageUrl())
                 .description(seed.description())
-                .category(seed.category())
+                .category(categoryRepository.findByNameIgnoreCase(seed.category()).orElse(null))
                 .active(seed.active())
                 .build()));
     }

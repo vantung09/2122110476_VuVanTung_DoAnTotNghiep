@@ -1,10 +1,12 @@
 package com.tungzone.service;
 
 import com.tungzone.dto.auth.AuthResponse;
+import com.tungzone.dto.auth.ForgotPasswordRequest;
 import com.tungzone.dto.auth.GoogleLoginRequest;
 import com.tungzone.dto.auth.GoogleTokenInfo;
 import com.tungzone.dto.auth.LoginRequest;
 import com.tungzone.dto.auth.RegisterRequest;
+import com.tungzone.dto.auth.ResetPasswordRequest;
 import com.tungzone.entity.Role;
 import com.tungzone.entity.User;
 import com.tungzone.repository.UserRepository;
@@ -17,18 +19,25 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final MailNotificationService mailNotificationService;
 
     @Value("${app.google.client-id:}")
     private String googleClientId;
+
+    @Value("${app.jwt.expiration:86400000}")
+    private long jwtExpiration;
 
     public AuthResponse register(RegisterRequest request) {
         String email = request.getEmail().trim().toLowerCase();
@@ -44,7 +53,7 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
-        return toResponse(user);
+        return toResponse(user, false);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -54,7 +63,7 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
-        return toResponse(user);
+        return toResponse(user, request.getRemember());
     }
 
     public AuthResponse loginWithGoogle(GoogleLoginRequest request) {
@@ -77,7 +86,44 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseGet(() -> createGoogleUser(tokenInfo, email));
 
-        return toResponse(user);
+        return toResponse(user, false);
+    }
+
+    public String requestPasswordReset(ForgotPasswordRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+        String defaultMessage = "Neu email ton tai, he thong da gui ma xac thuc dat lai mat khau.";
+        String[] message = {defaultMessage};
+
+        userRepository.findByEmail(email).ifPresent(user -> {
+            String token = generateResetToken();
+            user.setPasswordResetToken(passwordEncoder.encode(token));
+            user.setPasswordResetExpiresAt(LocalDateTime.now().plusMinutes(30));
+            boolean emailSent = mailNotificationService.sendPasswordReset(email, token);
+            userRepository.save(user);
+            if (!emailSent) {
+                message[0] = "Chua cau hinh SMTP nen he thong dang chay che do local. Ma xac thuc cua ban la: " + token;
+            }
+        });
+
+        return message[0];
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Ma xac thuc hoac email khong hop le"));
+
+        if (user.getPasswordResetToken() == null
+                || user.getPasswordResetExpiresAt() == null
+                || user.getPasswordResetExpiresAt().isBefore(LocalDateTime.now())
+                || !passwordEncoder.matches(request.getToken().trim(), user.getPasswordResetToken())) {
+            throw new RuntimeException("Ma xac thuc da het han hoac khong hop le");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setPasswordResetToken(null);
+        user.setPasswordResetExpiresAt(null);
+        userRepository.save(user);
     }
 
     private GoogleTokenInfo verifyGoogleToken(String credential) {
@@ -97,8 +143,13 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    private AuthResponse toResponse(User user) {
-        String token = jwtService.generateToken(user.getEmail(), user.getRole().name(), user.getId(), user.getFullName());
+    private String generateResetToken() {
+        return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+    }
+
+    private AuthResponse toResponse(User user, Boolean remember) {
+        long expiration = Boolean.TRUE.equals(remember) ? jwtExpiration * 7 : jwtExpiration;
+        String token = jwtService.generateToken(user.getEmail(), user.getRole().name(), user.getId(), user.getFullName(), expiration);
         return AuthResponse.builder()
                 .token(token)
                 .userId(user.getId())

@@ -1,6 +1,8 @@
 package com.tungzone.controller;
 
+import com.tungzone.dto.common.ApiMessageResponse;
 import com.tungzone.dto.order.OrderAdminResponse;
+import com.tungzone.dto.order.OrderCreateRequest;
 import com.tungzone.dto.order.OrderStatusUpdateRequest;
 import com.tungzone.service.AdminOrderService;
 import jakarta.validation.Valid;
@@ -22,9 +24,20 @@ public class AdminOrderController {
         return adminOrderService.getAllOrders();
     }
 
+    @PostMapping
+    public OrderAdminResponse createOrder(@RequestBody OrderCreateRequest request) {
+        return adminOrderService.createOrder(request);
+    }
+
     @PutMapping("/{id}/status")
     public OrderAdminResponse updateStatus(@PathVariable Long id,
                                            @Valid @RequestBody OrderStatusUpdateRequest request) {
         return adminOrderService.updateStatus(id, request.getStatus());
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiMessageResponse deleteOrder(@PathVariable Long id) {
+        adminOrderService.deleteOrder(id);
+        return new ApiMessageResponse("Xoa don hang thanh cong");
     }
 }

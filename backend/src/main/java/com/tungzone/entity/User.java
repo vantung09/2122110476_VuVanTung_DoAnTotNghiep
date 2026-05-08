@@ -34,6 +34,13 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @JsonIgnore
+    @Column(length = 120)
+    private String passwordResetToken;
+
+    @JsonIgnore
+    private LocalDateTime passwordResetExpiresAt;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;

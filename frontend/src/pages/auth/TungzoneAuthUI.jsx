@@ -9,24 +9,54 @@ const DEFAULT_FORM = {
   email: "",
   password: "",
   confirmPassword: "",
-  remember: false,
   agree: false,
 };
+
+const DEFAULT_RESET_FORM = {
+  email: "",
+  token: "",
+  newPassword: "",
+  confirmNewPassword: "",
+};
+
+function getAuthErrorMessage(error, fallback) {
+  const data = error.response?.data;
+  const message =
+    typeof data === "string"
+      ? data
+      : typeof data?.message === "string"
+      ? data.message
+      : data && typeof data === "object"
+      ? Object.values(data).find(Boolean)
+      : "";
+
+  if (String(message).toLowerCase().includes("bad credentials")) {
+    return "Email hoặc mật khẩu không đúng.";
+  }
+
+  return message || fallback;
+}
 
 export default function TungzoneAuthUI({ defaultMode = "login" }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const googleButtonRef = useRef(null);
   const googleInitialized = useRef(false);
   const [mode, setMode] = useState(defaultMode);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [form, setForm] = useState(DEFAULT_FORM);
+  const [resetForm, setResetForm] = useState(DEFAULT_RESET_FORM);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [resetStep, setResetStep] = useState("request");
   const [loading, setLoading] = useState(false);
+  const [authInputsUnlocked, setAuthInputsUnlocked] = useState(false);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const hasGoogleClientId = googleClientId && googleClientId !== "YOUR_CLIENT_ID";
+
+  const unlockAuthInputs = () => setAuthInputsUnlocked(true);
 
   useEffect(() => {
     if (location.pathname.includes("register")) {
@@ -35,6 +65,15 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
       setMode("login");
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!user) return;
+    navigate("/", { replace: true });
+  }, [user, navigate]);
+
+  useEffect(() => {
+    setAuthInputsUnlocked(false);
+  }, [mode, resetStep]);
 
   useEffect(() => {
     if (!hasGoogleClientId) return;
@@ -54,15 +93,9 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
             });
             login(res.data);
             const redirectTarget = location.state?.from;
-            const nextPath =
-              redirectTarget && res.data.role !== "ADMIN"
-                ? redirectTarget
-                : res.data.role === "ADMIN"
-                ? "/admin"
-                : "/";
-            navigate(nextPath);
+            navigate(redirectTarget || "/");
           } catch (err) {
-            setError(err.response?.data?.message || "Đăng nhập Google thất bại");
+            setError(getAuthErrorMessage(err, "Đăng nhập Google thất bại"));
           } finally {
             setLoading(false);
           }
@@ -109,6 +142,17 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
   }, [googleClientId, hasGoogleClientId, login, location.state?.from, navigate]);
 
   const content = useMemo(() => {
+    if (mode === "forgot") {
+      return {
+        title: "Đặt lại mật khẩu",
+        subtitle:
+          "Nhập email tài khoản để nhận mã xác thực, sau đó tạo mật khẩu mới cho TungZone.",
+        button: resetStep === "request" ? "Gửi mã xác thực" : "Đặt lại mật khẩu",
+        switchText: "Đã nhớ mật khẩu?",
+        switchAction: "Đăng nhập",
+      };
+    }
+
     return mode === "login"
       ? {
           title: "Đăng nhập vào TungZone",
@@ -126,10 +170,14 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
           switchText: "Đã có tài khoản?",
           switchAction: "Đăng nhập",
         };
-  }, [mode]);
+  }, [mode, resetStep]);
 
   const handleModeChange = (nextMode) => {
     setMode(nextMode);
+    setError("");
+    setSuccess("");
+    setAuthInputsUnlocked(false);
+    setResetStep("request");
     navigate(nextMode === "register" ? "/register" : "/login");
   };
 
@@ -151,22 +199,40 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
     if (loading) return;
     setLoading(true);
     setError("");
+    setSuccess("");
 
     try {
-      if (mode === "login") {
+      if (mode === "forgot") {
+        if (resetStep === "request") {
+          const response = await axiosClient.post("/auth/forgot-password", {
+            email: resetForm.email,
+          });
+          setSuccess(response.data?.message || "Neu email ton tai, he thong da gui ma xac thuc dat lai mat khau.");
+          setResetStep("confirm");
+        } else {
+          if (resetForm.newPassword !== resetForm.confirmNewPassword) {
+            setError("Mật khẩu mới xác nhận không khớp.");
+            return;
+          }
+          await axiosClient.post("/auth/reset-password", {
+            email: resetForm.email,
+            token: resetForm.token,
+            newPassword: resetForm.newPassword,
+          });
+          setSuccess("Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới.");
+          setResetForm(DEFAULT_RESET_FORM);
+          setResetStep("request");
+          setMode("login");
+          navigate("/login");
+        }
+      } else if (mode === "login") {
         const res = await axiosClient.post("/auth/login", {
           email: form.email,
           password: form.password,
         });
         login(res.data);
         const redirectTarget = location.state?.from;
-        const nextPath =
-          redirectTarget && res.data.role !== "ADMIN"
-            ? redirectTarget
-            : res.data.role === "ADMIN"
-            ? "/admin"
-            : "/";
-        navigate(nextPath);
+        navigate(redirectTarget || "/");
       } else {
         if (form.password !== form.confirmPassword) {
           setError("Mật khẩu xác nhận không khớp.");
@@ -187,10 +253,13 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
         navigate(redirectTarget || "/");
       }
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          (mode === "login" ? "Đăng nhập thất bại" : "Đăng ký thất bại")
-      );
+      const fallback =
+        mode === "forgot"
+          ? "Không xử lý được yêu cầu đặt lại mật khẩu"
+          : mode === "login"
+          ? "Đăng nhập thất bại"
+          : "Đăng ký thất bại";
+      setError(getAuthErrorMessage(err, fallback));
     } finally {
       setLoading(false);
     }
@@ -399,7 +468,74 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                   </div>
                 </div>
 
-                <form className="space-y-4" onSubmit={handleSubmit}>
+                <form className="space-y-4" onSubmit={handleSubmit} autoComplete="off" data-lpignore="true" data-form-type="other">
+                  {mode === "forgot" ? (
+                    <>
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-zinc-700">Email</label>
+                        <input
+                          type="email"
+                          name="tz-reset-identity"
+                          placeholder="you@example.com"
+                          autoComplete="off"
+                          autoCapitalize="none"
+                          spellCheck="false"
+                          readOnly={!authInputsUnlocked}
+                          value={resetForm.email}
+                          onFocus={unlockAuthInputs}
+                          onChange={(event) => setResetForm((prev) => ({ ...prev, email: event.target.value }))}
+                          className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
+                        />
+                      </div>
+
+                      {resetStep === "confirm" ? (
+                        <>
+                          <div>
+                            <label className="mb-2 block text-sm font-medium text-zinc-700">Mã xác thực</label>
+                            <input
+                              type="text"
+                              name="tz-reset-code"
+                              placeholder="Nhập mã 6 số"
+                              autoComplete="one-time-code"
+                              inputMode="numeric"
+                              value={resetForm.token}
+                              onChange={(event) => setResetForm((prev) => ({ ...prev, token: event.target.value }))}
+                              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-medium text-zinc-700">Mật khẩu mới</label>
+                            <input
+                              type="password"
+                              name="tz-reset-new-secret"
+                              placeholder="Nhập mật khẩu mới"
+                              autoComplete="new-password"
+                              readOnly={!authInputsUnlocked}
+                              value={resetForm.newPassword}
+                              onFocus={unlockAuthInputs}
+                              onChange={(event) => setResetForm((prev) => ({ ...prev, newPassword: event.target.value }))}
+                              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-medium text-zinc-700">Xác nhận mật khẩu mới</label>
+                            <input
+                              type="password"
+                              name="tz-reset-confirm-secret"
+                              placeholder="Nhập lại mật khẩu mới"
+                              autoComplete="new-password"
+                              readOnly={!authInputsUnlocked}
+                              value={resetForm.confirmNewPassword}
+                              onFocus={unlockAuthInputs}
+                              onChange={(event) => setResetForm((prev) => ({ ...prev, confirmNewPassword: event.target.value }))}
+                              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
+                            />
+                          </div>
+                        </>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
                   {mode === "register" && (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div>
@@ -431,10 +567,15 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                     <label className="mb-2 block text-sm font-medium text-zinc-700">Email</label>
                     <input
                       type="email"
-                      name="email"
+                      name={mode === "register" ? "tz-register-identity" : "tz-login-identity"}
                       placeholder="you@example.com"
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck="false"
+                      readOnly={!authInputsUnlocked}
                       value={form.email}
-                      onChange={handleChange}
+                      onFocus={unlockAuthInputs}
+                      onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
                       className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
                     />
                   </div>
@@ -444,10 +585,13 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                     <div className="relative">
                       <input
                         type={showPassword ? "text" : "password"}
-                        name="password"
+                        name={mode === "register" ? "tz-register-secret" : "tz-login-secret"}
                         placeholder="Nhập mật khẩu"
+                        autoComplete={mode === "register" ? "new-password" : "off"}
+                        readOnly={!authInputsUnlocked}
                         value={form.password}
-                        onChange={handleChange}
+                        onFocus={unlockAuthInputs}
+                        onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
                         className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 pr-16 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
                       />
                       <button
@@ -468,10 +612,13 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                       <div className="relative">
                         <input
                           type={showConfirmPassword ? "text" : "password"}
-                          name="confirmPassword"
+                          name="tz-register-confirm-secret"
                           placeholder="Nhập lại mật khẩu"
+                          autoComplete="new-password"
+                          readOnly={!authInputsUnlocked}
                           value={form.confirmPassword}
-                          onChange={handleChange}
+                          onFocus={unlockAuthInputs}
+                          onChange={(event) => setForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
                           className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 pr-16 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
                         />
                         <button
@@ -486,18 +633,18 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                   )}
 
                   {mode === "login" ? (
-                    <div className="flex items-center justify-between pt-1 text-sm">
-                      <label className="flex items-center gap-3 text-zinc-500">
-                        <input
-                          type="checkbox"
-                          name="remember"
-                          checked={form.remember}
-                          onChange={handleChange}
-                          className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
-                        />
-                        Ghi nhớ đăng nhập
-                      </label>
-                      <button type="button" className="font-medium text-zinc-900 hover:underline" onClick={() => navigate("/forgot-password")}>
+                    <div className="flex justify-end pt-1 text-sm">
+                      <button
+                        type="button"
+                        className="font-medium text-zinc-900 hover:underline"
+                        onClick={() => {
+                          setMode("forgot");
+                          setError("");
+                          setSuccess("");
+                          setAuthInputsUnlocked(false);
+                          setResetForm(DEFAULT_RESET_FORM);
+                        }}
+                      >
                         Quên mật khẩu?
                       </button>
                     </div>
@@ -516,6 +663,14 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                       </span>
                     </label>
                   )}
+                    </>
+                  )}
+
+                  {success ? (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                      {success}
+                    </div>
+                  ) : null}
 
                   {error ? (
                     <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">

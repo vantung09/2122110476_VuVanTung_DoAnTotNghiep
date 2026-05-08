@@ -7,15 +7,22 @@ import com.tungzone.dto.payment.MomoCreateResponse;
 import com.tungzone.entity.Order;
 import com.tungzone.entity.OrderItem;
 import com.tungzone.entity.OrderStatus;
+import com.tungzone.entity.Payment;
+import com.tungzone.entity.PaymentStatus;
 import com.tungzone.entity.Product;
 import com.tungzone.entity.User;
 import com.tungzone.repository.OrderRepository;
+import com.tungzone.repository.PaymentRepository;
 import com.tungzone.repository.ProductRepository;
 import com.tungzone.repository.UserRepository;
 import com.tungzone.util.MomoSignatureUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
@@ -32,6 +39,8 @@ public class MomoPaymentService {
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final PaymentRepository paymentRepository;
+    private final MailNotificationService mailNotificationService;
 
     @Value("${app.momo.partner-code:}")
     private String partnerCode;
@@ -51,15 +60,16 @@ public class MomoPaymentService {
     @Value("${app.momo.redirect-url:http://localhost:5173/cart}")
     private String redirectUrl;
 
+    @Transactional
     public MomoCreatePaymentResponse createPayment(MomoCreatePaymentRequest request, String email) {
         if (request == null || request.items() == null || request.items().isEmpty()) {
-            throw new IllegalArgumentException("Danh sÃ¡ch sáº£n pháº©m trá»‘ng.");
+            throw new IllegalArgumentException("Danh sach san pham trong.");
         }
         if (isBlank(partnerCode) || isBlank(accessKey) || isBlank(secretKey)) {
-            throw new IllegalStateException("Thiáº¿u cáº¥u hÃ¬nh MoMo.");
+            throw new IllegalStateException("Thieu cau hinh MoMo.");
         }
         if (isBlank(ipnUrl)) {
-            throw new IllegalStateException("Thiáº¿u cáº¥u hÃ¬nh ipnUrl MoMo.");
+            throw new IllegalStateException("Thieu cau hinh ipnUrl MoMo.");
         }
 
         String normalizedEmail = email != null ? email.trim().toLowerCase() : null;
@@ -87,6 +97,15 @@ public class MomoPaymentService {
                 : request.orderInfo();
         String requestType = "captureWallet";
         String extraData = "";
+
+        Payment payment = Payment.builder()
+                .order(order)
+                .amount((double) amount)
+                .method("MOMO")
+                .status(PaymentStatus.PENDING)
+                .transactionRef(requestId)
+                .build();
+        payment = paymentRepository.save(payment);
 
         String rawSignature = "accessKey=" + accessKey
                 + "&amount=" + amount
@@ -117,22 +136,38 @@ public class MomoPaymentService {
         RestTemplate restTemplate = new RestTemplate();
         MomoCreateResponse response;
         try {
-            response = restTemplate.postForObject(endpoint, payload, MomoCreateResponse.class);
+            response = restTemplate.postForObject(endpoint, createJsonRequest(payload), MomoCreateResponse.class);
         } catch (HttpStatusCodeException exception) {
             throw new IllegalStateException(extractMomoMessage(exception.getResponseBodyAsString()));
         }
         if (response == null || response.resultCode() == null || response.resultCode() != 0) {
-            String message = response != null ? response.message() : "KhÃ´ng táº¡o Ä‘Æ°á»£c thanh toÃ¡n MoMo.";
+            payment.setStatus(PaymentStatus.FAILED);
+            paymentRepository.save(payment);
+            String message = response != null ? response.message() : "Khong tao duoc thanh toan MoMo.";
             throw new IllegalStateException(message);
         }
 
+        payment.setPaymentUrl(response.payUrl());
+        paymentRepository.save(payment);
+
+        order.setStatus(OrderStatus.CONFIRMED);
+        orderRepository.save(order);
+        mailNotificationService.sendPaymentCreated(user.getEmail(), order);
+
         return new MomoCreatePaymentResponse(orderId, amount, response.payUrl(), response.qrCodeUrl(), response.deeplink());
+    }
+
+    private HttpEntity<Map<String, Object>> createJsonRequest(Map<String, Object> payload) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        return new HttpEntity<>(payload, headers);
     }
 
     private Order buildOrder(User user, List<MomoCreateItemRequest> items) {
         Order order = new Order();
         order.setUser(user);
-        order.setStatus(OrderStatus.PENDING);
+        order.setStatus(OrderStatus.CONFIRMED);
         List<OrderItem> orderItems = new ArrayList<>();
         double total = 0;
 
@@ -141,7 +176,7 @@ public class MomoPaymentService {
                 continue;
             }
             Product product = productRepository.findById(item.productId())
-                    .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y sáº£n pháº©m."));
+                    .orElseThrow(() -> new IllegalArgumentException("Khong tim thay san pham."));
             double price = product.getPrice() != null ? product.getPrice() : 0;
             total += price * item.quantity();
 
@@ -154,7 +189,7 @@ public class MomoPaymentService {
         }
 
         if (orderItems.isEmpty()) {
-            throw new IllegalArgumentException("Danh sÃ¡ch sáº£n pháº©m trá»‘ng.");
+            throw new IllegalArgumentException("Danh sach san pham trong.");
         }
 
         order.setItems(orderItems);
@@ -183,4 +218,3 @@ public class MomoPaymentService {
         return rawBody.substring(from, end);
     }
 }
-

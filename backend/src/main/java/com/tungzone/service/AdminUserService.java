@@ -2,6 +2,7 @@ package com.tungzone.service;
 
 import com.tungzone.dto.user.UserAdminResponse;
 import com.tungzone.dto.user.UserCreateRequest;
+import com.tungzone.dto.user.UserUpdateRequest;
 import com.tungzone.entity.Role;
 import com.tungzone.entity.User;
 import com.tungzone.repository.UserRepository;
@@ -33,6 +34,41 @@ public class AdminUserService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.valueOf(request.getRole().trim().toUpperCase()))
                 .build();
+
+        return toResponse(userRepository.save(user));
+    }
+
+    public UserAdminResponse updateUser(Long id, UserUpdateRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            user.setFullName(request.getFullName().trim());
+        }
+
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            String newEmail = request.getEmail().trim().toLowerCase();
+            if (!newEmail.equals(user.getEmail()) && userRepository.existsByEmail(newEmail)) {
+                throw new RuntimeException("Email đã được sử dụng bởi tài khoản khác");
+            }
+            user.setEmail(newEmail);
+        }
+
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+
+        if (request.getRole() != null && !request.getRole().isBlank()) {
+            if (request.getRole().equalsIgnoreCase("ADMIN")) {
+                long adminCount = userRepository.findAll().stream()
+                        .filter(u -> u.getRole() == Role.ADMIN && !u.getId().equals(id))
+                        .count();
+                if (adminCount == 0) {
+                    throw new RuntimeException("Không thể hạ cấp admin cuối cùng");
+                }
+            }
+            user.setRole(Role.valueOf(request.getRole().trim().toUpperCase()));
+        }
 
         return toResponse(userRepository.save(user));
     }

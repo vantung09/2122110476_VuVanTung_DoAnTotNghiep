@@ -1,28 +1,42 @@
 import { useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import AdminShell from "../../components/AdminShell";
+import { sortNewestFirst } from "../../utils/sortNewestFirst";
 
-const emptyForm = {
+const createEmptyForm = () => ({
   fullName: "",
   email: "",
   password: "",
   role: "USER",
-};
+});
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
-  const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState(null);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
+  const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState(createEmptyForm());
+  const [createMsg, setCreateMsg] = useState("");
+
+  const [editModalUser, setEditModalUser] = useState(null);
+  const [editForm, setEditForm] = useState({
+    fullName: "",
+    email: "",
+    role: "USER",
+  });
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  const [pwModalUser, setPwModalUser] = useState(null);
+  const [pwValue, setPwValue] = useState("");
+  const [pwError, setPwError] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
 
   const fetchUsers = async () => {
     try {
       const res = await axiosClient.get("/admin/users");
-      setUsers(res.data || []);
+      setUsers(sortNewestFirst(res.data));
       setError("");
     } catch (err) {
       setError(err.response?.data?.message || "Không tải được danh sách người dùng.");
@@ -34,81 +48,157 @@ export default function AdminUsersPage() {
   }, []);
 
   const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      const keyword = searchTerm.trim().toLowerCase();
-      const matchesKeyword =
-        !keyword ||
-        String(user.fullName || "").toLowerCase().includes(keyword) ||
-        String(user.email || "").toLowerCase().includes(keyword);
+    return users.filter((u) => {
+      const kw = searchTerm.trim().toLowerCase();
+      const matchKw =
+        !kw ||
+        u.fullName?.toLowerCase().includes(kw) ||
+        u.email?.toLowerCase().includes(kw);
 
-      const matchesRole = roleFilter === "ALL" || user.role === roleFilter;
-      return matchesKeyword && matchesRole;
+      const matchRole = roleFilter === "ALL" || u.role === roleFilter;
+      return matchKw && matchRole;
     });
   }, [users, searchTerm, roleFilter]);
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const resetForm = () => {
-    setEditingId(null);
-    setForm(emptyForm);
-  };
 
   const clearFilters = () => {
     setSearchTerm("");
     setRoleFilter("ALL");
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setSubmitting(true);
-    setMessage("");
+  const handleCreateChange = (e) => {
+    const { name, value } = e.target;
+    setCreateForm((p) => ({ ...p, [name]: value }));
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    setCreating(true);
+    setCreateMsg("");
     setError("");
 
     try {
-      if (editingId) {
-        await axiosClient.put(`/admin/users/${editingId}`, form);
-        setMessage("Cập nhật người dùng thành công.");
-      } else {
-        await axiosClient.post("/admin/users", form);
-        setMessage("Tạo người dùng thành công.");
-      }
-
-      resetForm();
+      await axiosClient.post("/admin/users", createForm);
+      setCreateMsg("Tạo người dùng thành công.");
+      setCreateForm(createEmptyForm());
       await fetchUsers();
     } catch (err) {
-      setError(err.response?.data?.message || "Lưu người dùng thất bại.");
+      setError(err.response?.data?.message || "Tạo người dùng thất bại.");
     } finally {
-      setSubmitting(false);
+      setCreating(false);
     }
   };
 
-  const handleEdit = (user) => {
-    setEditingId(user.id);
-    setForm({
+  const openEditModal = (user) => {
+    setEditModalUser(user);
+    setEditForm({
       fullName: user.fullName || "",
       email: user.email || "",
-      password: "",
       role: user.role || "USER",
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setEditError("");
+  };
+
+  const closeEditModal = () => {
+    setEditModalUser(null);
+    setEditForm({
+      fullName: "",
+      email: "",
+      role: "USER",
+    });
+    setEditError("");
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((p) => ({ ...p, [name]: value }));
+  };
+
+  const saveEdit = async (e) => {
+    e.preventDefault();
+
+    if (!editForm.fullName?.trim()) {
+      setEditError("Họ tên không được để trống.");
+      return;
+    }
+
+    if (!editForm.email?.trim()) {
+      setEditError("Email không được để trống.");
+      return;
+    }
+
+    setEditLoading(true);
+    setEditError("");
+
+    try {
+      await axiosClient.put(`/admin/users/${editModalUser.id}`, {
+        fullName: editForm.fullName.trim(),
+        email: editForm.email.trim(),
+        role: editForm.role,
+      });
+
+      await fetchUsers();
+      closeEditModal();
+    } catch (err) {
+      setEditError(err.response?.data?.message || "Cập nhật thất bại.");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const openPwModal = (user) => {
+    setPwModalUser(user);
+    setPwValue("");
+    setPwError("");
+  };
+
+  const closePwModal = () => {
+    setPwModalUser(null);
+    setPwValue("");
+    setPwError("");
+  };
+
+  const handlePwSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!pwValue.trim()) {
+      setPwError("Vui lòng nhập mật khẩu mới.");
+      return;
+    }
+
+    if (pwValue.length < 6) {
+      setPwError("Mật khẩu tối thiểu 6 ký tự.");
+      return;
+    }
+
+    setPwLoading(true);
+    setPwError("");
+
+    try {
+      await axiosClient.put(`/admin/users/${pwModalUser.id}`, {
+        fullName: pwModalUser.fullName || "",
+        email: pwModalUser.email || "",
+        role: pwModalUser.role || "USER",
+        password: pwValue,
+      });
+
+      await fetchUsers();
+      closePwModal();
+    } catch (err) {
+      setPwError(err.response?.data?.message || "Đổi mật khẩu thất bại.");
+    } finally {
+      setPwLoading(false);
+    }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Bạn có chắc muốn xóa người dùng này không?")) return;
+    if (!window.confirm("Bạn có chắc muốn xóa người dùng này?")) return;
 
     try {
       await axiosClient.delete(`/admin/users/${id}`);
-      setMessage("Xóa người dùng thành công.");
-      setError("");
-      if (editingId === id) {
-        resetForm();
-      }
+
+      if (editModalUser?.id === id) closeEditModal();
+      if (pwModalUser?.id === id) closePwModal();
+
       await fetchUsers();
     } catch (err) {
       setError(err.response?.data?.message || "Xóa người dùng thất bại.");
@@ -118,54 +208,67 @@ export default function AdminUsersPage() {
   return (
     <AdminShell
       title="Quản lý người dùng"
-      subtitle="Tạo mới, chỉnh sửa và quản lý quyền tài khoản trong hệ thống."
+      subtitle="Tạo, chỉnh sửa thông tin và đổi mật khẩu người dùng."
     >
       <section className="page-gap">
-        <div className="card p-lg">
-          <h1>{editingId ? "Cập nhật người dùng" : "Thêm người dùng"}</h1>
+        {error && <div className="admin-flash error">{error}</div>}
 
-          <form className="form-grid" onSubmit={handleSubmit}>
+        <div className="card p-lg">
+          <h2>Thêm người dùng mới</h2>
+
+          <form className="form-grid" onSubmit={handleCreateSubmit}>
             <input
               className="input"
               name="fullName"
               placeholder="Họ và tên"
-              value={form.fullName}
-              onChange={handleChange}
+              value={createForm.fullName}
+              onChange={handleCreateChange}
+              required
             />
+
             <input
               className="input"
               name="email"
               type="email"
               placeholder="Email"
-              value={form.email}
-              onChange={handleChange}
+              value={createForm.email}
+              onChange={handleCreateChange}
+              required
             />
+
             <input
               className="input"
               name="password"
               type="password"
-              placeholder={editingId ? "Mật khẩu mới (để trống nếu giữ nguyên)" : "Mật khẩu"}
-              value={form.password}
-              onChange={handleChange}
+              placeholder="Mật khẩu (tối thiểu 6 ký tự)"
+              value={createForm.password}
+              onChange={handleCreateChange}
+              required
             />
-            <select className="input" name="role" value={form.role} onChange={handleChange}>
+
+            <select
+              className="input"
+              name="role"
+              value={createForm.role}
+              onChange={handleCreateChange}
+            >
               <option value="USER">USER</option>
               <option value="ADMIN">ADMIN</option>
             </select>
 
-            {message ? <div className="success-box grid-span-2">{message}</div> : null}
-            {error ? <div className="error-box grid-span-2">{error}</div> : null}
+            {createMsg && <div className="success-box grid-span-2">{createMsg}</div>}
 
             <div className="button-row grid-span-2">
-              <button className="btn btn-primary" type="submit" disabled={submitting}>
-                {submitting
-                  ? "Đang lưu..."
-                  : editingId
-                    ? "Cập nhật người dùng"
-                    : "Tạo người dùng"}
+              <button className="btn btn-primary" type="submit" disabled={creating}>
+                {creating ? "Đang tạo..." : "Tạo người dùng"}
               </button>
-              <button className="btn btn-secondary" type="button" onClick={resetForm}>
-                Làm mới biểu mẫu
+
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => setCreateForm(createEmptyForm())}
+              >
+                Làm mới
               </button>
             </div>
           </form>
@@ -184,12 +287,13 @@ export default function AdminUsersPage() {
               className="input admin-search-input"
               placeholder="Tìm theo họ tên hoặc email"
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
+
             <select
               className="input admin-select"
               value={roleFilter}
-              onChange={(event) => setRoleFilter(event.target.value)}
+              onChange={(e) => setRoleFilter(e.target.value)}
             >
               <option value="ALL">Tất cả quyền</option>
               <option value="ADMIN">ADMIN</option>
@@ -199,10 +303,11 @@ export default function AdminUsersPage() {
 
           <div className="admin-summary-strip">
             <span className="admin-summary-pill">Tổng: {users.length}</span>
-            <span className="admin-summary-pill">Kết quả lọc: {filteredUsers.length}</span>
+            <span className="admin-summary-pill">Kết quả: {filteredUsers.length}</span>
             <span className="admin-summary-pill">
-              Admin: {users.filter((item) => item.role === "ADMIN").length}
+              Admin: {users.filter((u) => u.role === "ADMIN").length}
             </span>
+
             <button className="btn btn-secondary btn-sm" type="button" onClick={clearFilters}>
               Xóa bộ lọc
             </button>
@@ -211,6 +316,7 @@ export default function AdminUsersPage() {
 
         <div className="card p-lg overflow-x">
           <h2>Danh sách người dùng</h2>
+
           <table className="table">
             <thead>
               <tr>
@@ -218,41 +324,162 @@ export default function AdminUsersPage() {
                 <th>Họ tên</th>
                 <th>Email</th>
                 <th>Quyền</th>
-                <th>Tạo lúc</th>
+                <th>Ngày tạo</th>
                 <th>Thao tác</th>
               </tr>
             </thead>
+
             <tbody>
               {filteredUsers.map((user) => (
                 <tr key={user.id}>
-                  <td>{user.id}</td>
+                  <td className="td-id">{user.id}</td>
                   <td>{user.fullName}</td>
                   <td>{user.email}</td>
-                  <td>{user.role}</td>
-                  <td>{user.createdAt ? new Date(user.createdAt).toLocaleString("vi-VN") : ""}</td>
+                  <td>
+                    <span className={`role-badge role-${user.role?.toLowerCase()}`}>
+                      {user.role}
+                    </span>
+                  </td>
+                  <td>
+                    {user.createdAt ? new Date(user.createdAt).toLocaleString("vi-VN") : ""}
+                  </td>
                   <td>
                     <div className="table-actions">
-                      <button className="btn btn-secondary btn-sm" onClick={() => handleEdit(user)}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => openEditModal(user)}
+                      >
                         Sửa
                       </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(user.id)}>
+
+                      <button
+                        className="btn btn-outline-warning btn-sm"
+                        onClick={() => openPwModal(user)}
+                      >
+                        Đổi mật khẩu
+                      </button>
+
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDelete(user.id)}
+                      >
                         Xóa
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {filteredUsers.length === 0 ? (
+
+              {filteredUsers.length === 0 && (
                 <tr>
                   <td colSpan="6" className="table-empty-cell">
-                    Không có người dùng phù hợp với bộ lọc hiện tại.
+                    Không có người dùng phù hợp.
                   </td>
                 </tr>
-              ) : null}
+              )}
             </tbody>
           </table>
         </div>
       </section>
+
+      {editModalUser && (
+        <div className="modal-overlay" onClick={closeEditModal}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <h3>Chỉnh sửa người dùng</h3>
+
+            <p className="modal-subtitle">
+              Đang sửa: <strong>{editModalUser.fullName}</strong> ({editModalUser.email})
+            </p>
+
+            <form onSubmit={saveEdit}>
+              <div className="modal-field">
+                <label>Họ và tên</label>
+                <input
+                  className="input"
+                  name="fullName"
+                  value={editForm.fullName}
+                  onChange={handleEditChange}
+                  autoFocus
+                />
+              </div>
+
+              <div className="modal-field">
+                <label>Email</label>
+                <input
+                  className="input"
+                  name="email"
+                  type="email"
+                  value={editForm.email}
+                  onChange={handleEditChange}
+                />
+              </div>
+
+              <div className="modal-field">
+                <label>Quyền</label>
+                <select
+                  className="input"
+                  name="role"
+                  value={editForm.role}
+                  onChange={handleEditChange}
+                >
+                  <option value="USER">USER</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+              </div>
+
+              {editError && <div className="error-box">{editError}</div>}
+
+              <div className="modal-actions">
+                <button type="submit" className="btn btn-primary" disabled={editLoading}>
+                  {editLoading ? "Đang lưu..." : "Lưu thay đổi"}
+                </button>
+
+                <button type="button" className="btn btn-secondary" onClick={closeEditModal}>
+                  Hủy
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {pwModalUser && (
+        <div className="modal-overlay" onClick={closePwModal}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <h3>Đổi mật khẩu</h3>
+
+            <p className="modal-subtitle">
+              Người dùng: <strong>{pwModalUser.fullName}</strong> ({pwModalUser.email})
+            </p>
+
+            <form onSubmit={handlePwSubmit}>
+              <div className="modal-field">
+                <label>Mật khẩu mới</label>
+                <input
+                  className="input"
+                  type="password"
+                  placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
+                  value={pwValue}
+                  onChange={(e) => setPwValue(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              {pwError && <div className="error-box">{pwError}</div>}
+
+              <div className="modal-actions">
+                <button type="submit" className="btn btn-primary" disabled={pwLoading}>
+                  {pwLoading ? "Đang lưu..." : "Lưu mật khẩu"}
+                </button>
+
+                <button type="button" className="btn btn-secondary" onClick={closePwModal}>
+                  Hủy
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AdminShell>
   );
 }

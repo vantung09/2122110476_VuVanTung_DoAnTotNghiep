@@ -1,9 +1,12 @@
 package com.tungzone.controller;
 
 import com.tungzone.dto.auth.AuthResponse;
+import com.tungzone.dto.auth.ForgotPasswordRequest;
 import com.tungzone.dto.auth.GoogleLoginRequest;
 import com.tungzone.dto.auth.LoginRequest;
 import com.tungzone.dto.auth.RegisterRequest;
+import com.tungzone.dto.auth.ResetPasswordRequest;
+import com.tungzone.dto.common.ApiMessageResponse;
 import com.tungzone.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,5 +31,16 @@ public class AuthController {
     @PostMapping("/google")
     public AuthResponse loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
         return authService.loginWithGoogle(request);
+    }
+
+    @PostMapping("/forgot-password")
+    public ApiMessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return new ApiMessageResponse(authService.requestPasswordReset(request));
+    }
+
+    @PostMapping("/reset-password")
+    public ApiMessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return new ApiMessageResponse("Dat lai mat khau thanh cong. Vui long dang nhap lai.");
     }
 }

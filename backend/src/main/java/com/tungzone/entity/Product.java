@@ -25,11 +25,19 @@ public class Product {
     private Double originalPrice;
     private Integer stock;
     private String imageUrl;
+    private Boolean flashSale;
+    private LocalDateTime flashSaleStartAt;
+    private LocalDateTime flashSaleEndAt;
+    private Integer flashSaleQuantity;
+    private Integer flashSaleSold;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    private String category;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
     private Boolean active;
     private LocalDateTime createdAt;
 
@@ -38,6 +46,12 @@ public class Product {
         this.createdAt = LocalDateTime.now();
         if (this.active == null) {
             this.active = true;
+        }
+        if (this.flashSale == null) {
+            this.flashSale = false;
+        }
+        if (this.flashSaleSold == null) {
+            this.flashSaleSold = 0;
         }
     }
 }

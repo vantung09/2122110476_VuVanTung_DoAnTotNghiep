@@ -22,18 +22,19 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<CategoryResponse> getAllForAdmin() {
-        syncCategoriesFromProducts();
-
         Map<String, Long> productCounts = productRepository.findAll().stream()
-                .map(Product::getCategory)
-                .map(this::normalize)
-                .filter(value -> !value.isBlank())
-                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+                .filter(p -> p.getCategory() != null)
+                .collect(Collectors.groupingBy(
+                        p -> p.getCategory().getName().toLowerCase(Locale.ROOT),
+                        Collectors.counting()));
 
         return categoryRepository.findAllByOrderByNameAsc().stream()
-                .map(category -> toResponse(category, productCounts.getOrDefault(normalize(category.getName()), 0L)))
+                .map(category -> {
+                    long count = productCounts.getOrDefault(category.getName().toLowerCase(Locale.ROOT), 0L);
+                    return toResponse(category, count);
+                })
                 .toList();
     }
 
@@ -58,7 +59,6 @@ public class CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục"));
 
-        String previousName = category.getName();
         String nextName = normalizeDisplayName(request.getName());
 
         categoryRepository.findByNameIgnoreCase(nextName)
@@ -71,18 +71,9 @@ public class CategoryService {
         category.setDescription(request.getDescription());
         category.setActive(request.getActive() == null ? true : request.getActive());
 
-        if (!normalize(previousName).equals(normalize(nextName))) {
-            List<Product> products = productRepository.findAll().stream()
-                    .filter(product -> normalize(product.getCategory()).equals(normalize(previousName)))
-                    .peek(product -> product.setCategory(nextName))
-                    .toList();
-            if (!products.isEmpty()) {
-                productRepository.saveAll(products);
-            }
-        }
-
         long productCount = productRepository.findAll().stream()
-                .filter(product -> normalize(product.getCategory()).equals(normalize(nextName)))
+                .filter(p -> p.getCategory() != null
+                        && p.getCategory().getName().equalsIgnoreCase(nextName))
                 .count();
 
         return toResponse(categoryRepository.save(category), productCount);
@@ -94,7 +85,8 @@ public class CategoryService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục"));
 
         long linkedProducts = productRepository.findAll().stream()
-                .filter(product -> normalize(product.getCategory()).equals(normalize(category.getName())))
+                .filter(p -> p.getCategory() != null
+                        && p.getCategory().getName().equalsIgnoreCase(category.getName()))
                 .count();
 
         if (linkedProducts > 0) {
@@ -102,32 +94,6 @@ public class CategoryService {
         }
 
         categoryRepository.delete(category);
-    }
-
-    @Transactional
-    public void ensureCategoryExists(String categoryName) {
-        String normalizedName = normalizeDisplayName(categoryName);
-        if (normalizedName.isBlank()) {
-            return;
-        }
-
-        if (!categoryRepository.existsByNameIgnoreCase(normalizedName)) {
-            categoryRepository.save(Category.builder()
-                    .name(normalizedName)
-                    .description("")
-                    .active(true)
-                    .build());
-        }
-    }
-
-    @Transactional
-    public void syncCategoriesFromProducts() {
-        productRepository.findAll().stream()
-                .map(Product::getCategory)
-                .map(this::normalizeDisplayName)
-                .filter(value -> !value.isBlank())
-                .distinct()
-                .forEach(this::ensureCategoryExists);
     }
 
     private CategoryResponse toResponse(Category category, long productCount) {
@@ -142,9 +108,5 @@ public class CategoryService {
 
     private String normalizeDisplayName(String value) {
         return value == null ? "" : value.trim().replaceAll("\\s+", " ");
-    }
-
-    private String normalize(String value) {
-        return normalizeDisplayName(value).toLowerCase(Locale.ROOT);
     }
 }

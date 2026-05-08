@@ -11,6 +11,16 @@ import StoreActionButton, {
 
 const CAPACITY_OPTIONS = ["128GB", "256GB", "512GB"];
 
+function formatPrice(price) {
+  return Number(price || 0).toLocaleString("vi-VN");
+}
+
+function getFlashSaleRemaining(product, stock) {
+  const value = Number(product?.flashSaleRemaining);
+  if (Number.isFinite(value) && value >= 0) return value;
+  return stock;
+}
+
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -18,8 +28,8 @@ export default function ProductCard({ product }) {
   const [favoriteAnimated, setFavoriteAnimated] = useState(false);
 
   const name = product?.name || "";
-  const category = product?.category || "Sản phẩm";
-  const isIphone = /iphone/i.test(product?.category || "") || /iphone/i.test(name);
+  const category = product?.categoryName || "San pham";
+  const isIphone = /iphone/i.test(product?.categoryName || "") || /iphone/i.test(name);
   const selectedCapacity = CAPACITY_OPTIONS.find((opt) => name.toUpperCase().includes(opt));
   const favorite = isFavorite(product.id);
   const price = Number(product.price || 0);
@@ -29,78 +39,135 @@ export default function ProductCard({ product }) {
       ? Math.round(((originalPrice - price) / originalPrice) * 100)
       : 0;
   const stock = Number(product.stock || 0);
+  const isOutOfStock = stock === 0;
+  const flashSaleActive = Boolean(product?.flashSaleActive);
+  const flashSaleRemaining = getFlashSaleRemaining(product, stock);
+  const flashSaleTotal = Number(product?.flashSaleQuantity || 0) > 0
+    ? Number(product.flashSaleQuantity || 0)
+    : stock;
+  const flashSalePercent = flashSaleTotal > 0
+    ? Math.max(0, Math.min(100, (flashSaleRemaining / flashSaleTotal) * 100))
+    : 0;
 
-  const triggerCartAnimation = () => {
+  const triggerCart = () => {
     setCartAnimated(true);
-    window.setTimeout(() => setCartAnimated(false), 650);
+    window.setTimeout(() => setCartAnimated(false), 700);
   };
 
-  const triggerFavoriteAnimation = () => {
+  const triggerFavorite = () => {
     setFavoriteAnimated(true);
-    window.setTimeout(() => setFavoriteAnimated(false), 650);
+    window.setTimeout(() => setFavoriteAnimated(false), 700);
   };
 
-  const handleAddToCart = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const handleAddToCart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isOutOfStock) return;
     addToCart(product, 1);
-    triggerCartAnimation();
+    triggerCart();
   };
 
-  const handleToggleFavorite = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const handleToggleFavorite = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     toggleFavorite(product);
-    triggerFavoriteAnimation();
+    triggerFavorite();
   };
 
   return (
-    <Link to={`/products/${product.id}`} className="product-card">
+    <Link
+      to={`/products/${product.id}`}
+      className={`product-card tz-product-card ${isOutOfStock ? "out-of-stock" : ""} ${flashSaleActive ? "is-flash-sale" : ""}`}
+      aria-label={`${name} – ${formatPrice(price)} đ`}
+    >
+      {/* Image section */}
       <div className="product-image-wrap">
+        {/* Badges */}
         <div className="product-badges">
           <span className="product-badge">{category}</span>
-          {discountPercent > 0 ? (
-            <span className="product-badge product-badge-sale">-{discountPercent}%</span>
-          ) : null}
+          {flashSaleActive && (
+            <span className="product-badge product-badge-flash">
+              Flash sale
+            </span>
+          )}
+          {discountPercent > 0 && (
+            <span className="product-badge product-badge-sale tz-sale-badge">
+              -{discountPercent}%
+            </span>
+          )}
         </div>
 
         <img
           src={getProductImageUrl(product)}
           alt={product.name}
           className="product-image"
-          onError={(event) => handleProductImageError(event, product)}
+          onError={(e) => handleProductImageError(e, product)}
+          loading="lazy"
         />
+
+        {flashSaleActive && (
+          <div className="tz-flash-deal-ribbon">
+            Đang săn deal
+          </div>
+        )}
+
+        {/* Out of stock overlay */}
+        {isOutOfStock && (
+          <div className="tz-outofstock-overlay">
+            <span>Hết hàng</span>
+          </div>
+        )}
       </div>
 
-      {isIphone ? (
+      {/* Capacity chips for iPhone */}
+      {isIphone && (
         <div className="product-variants">
           {CAPACITY_OPTIONS.map((opt) => (
-            <span
-              key={opt}
-              className={`variant-chip ${selectedCapacity === opt ? "active" : ""}`}
-            >
+            <span key={opt} className={`variant-chip ${selectedCapacity === opt ? "active" : ""}`}>
               {opt}
             </span>
           ))}
         </div>
-      ) : null}
+      )}
 
+      {/* Info */}
       <div className="product-content">
         <div className="product-meta">
           <span className="product-brand-line">{product.brand || "Apple"}</span>
-          <span className={`product-stock ${stock <= 5 ? "low" : ""}`}>
-            {stock === 0 ? "Hết hàng" : stock <= 5 ? `Sắp hết hàng: ${stock}` : `Còn hàng: ${stock}`}
-          </span>
+          {!isOutOfStock && (
+            <span className={`product-stock ${stock <= 5 ? "low" : ""}`}>
+              {stock <= 5 ? `Còn ${stock}` : "Còn hàng"}
+            </span>
+          )}
         </div>
-        <h3 className="product-name">{product.name}</h3>
+        <h3 className="product-name">{name}</h3>
         <div className="product-price-wrap">
-          <span className="product-price">{price.toLocaleString("vi-VN")} đ</span>
-          {originalPrice ? (
-            <span className="product-old-price">{originalPrice.toLocaleString("vi-VN")} đ</span>
-          ) : null}
+          <span className="product-price">{formatPrice(price)} đ</span>
+          {originalPrice > price && (
+            <span className="product-old-price">{formatPrice(originalPrice)} đ</span>
+          )}
         </div>
+
+        {/* Savings callout */}
+        {discountPercent >= 5 && (
+          <div className="tz-savings-tag">
+            Tiết kiệm {formatPrice(originalPrice - price)} đ
+          </div>
+        )}
+        {flashSaleActive && (
+          <div className="tz-flash-card-meter">
+            <div className="tz-flash-card-meter-head">
+              <span>Flash sale đang chạy</span>
+              <strong>Còn {flashSaleRemaining} suất</strong>
+            </div>
+            <div className="tz-flash-card-progress" aria-hidden="true">
+              <i style={{ width: `${Math.max(8, flashSalePercent)}%` }} />
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Actions */}
       <div className="product-actions product-actions-premium">
         <StoreActionButton
           variant="cart"
@@ -108,8 +175,9 @@ export default function ProductCard({ product }) {
           animated={cartAnimated}
           onClick={handleAddToCart}
           icon={cartAnimated ? <StoreCheckIcon /> : <StoreBagIcon />}
+          disabled={isOutOfStock}
         >
-          {cartAnimated ? "Đã thêm giỏ" : "Thêm vào giỏ"}
+          {isOutOfStock ? "Hết hàng" : cartAnimated ? "Đã thêm!" : "Thêm vào giỏ"}
         </StoreActionButton>
 
         <StoreActionButton

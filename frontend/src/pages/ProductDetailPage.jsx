@@ -271,7 +271,7 @@ function buildHighlights(product, categoryKey) {
 function buildSpecs(product, categoryKey, selectedVariant, selectedColor) {
   const baseSpecs = [
     ["Thương hiệu", product.brand || "Apple"],
-    ["Danh mục", product.category || "Đang cập nhật"],
+    ["Danh mục", product.categoryName || "Đang cập nhật"],
     [categoryKey === "watch" ? "Phiên bản" : "Dung lượng", selectedVariant || "Đang cập nhật"],
     ["Màu sắc", selectedColor?.name || "Đang cập nhật"],
     ["Tình trạng", product.active ? "Đang mở bán" : "Tạm ẩn"],
@@ -599,6 +599,7 @@ export default function ProductDetailPage() {
   const salePercent = oldPrice > mainPrice ? Math.round((saveAmount / oldPrice) * 100) : 0;
   const monthlyPrice = Math.max(0, Math.round(mainPrice / 12));
   const stockCount = Number(product.stock || 0);
+  const flashSaleActive = Boolean(product.flashSaleActive);
   const availabilityLabel = product.active
     ? stockCount > 0
       ? `Còn ${stockCount} sản phẩm`
@@ -659,7 +660,7 @@ export default function ProductDetailPage() {
         <div className="detail-page-breadcrumb tzdetail-breadcrumb">
           <Link to="/">Trang chủ</Link>
           <span>/</span>
-          <span>{product.category || "Sản phẩm"}</span>
+          <span>{product.categoryName || "Sản phẩm"}</span>
           <span>/</span>
           <strong>{product.name}</strong>
         </div>
@@ -669,6 +670,7 @@ export default function ProductDetailPage() {
             <div className="tzdetail-badge-row">
               <span className="tzdetail-badge">Chính hãng</span>
               <span className="tzdetail-badge">{availabilityLabel}</span>
+              {flashSaleActive ? <span className="tzdetail-badge tzdetail-flash-badge">Flash sale</span> : null}
               {salePercent > 0 ? <span className="tzdetail-badge">Giảm {salePercent}%</span> : null}
             </div>
 
@@ -725,7 +727,7 @@ export default function ProductDetailPage() {
 
           <aside className="tzdetail-summary-card">
             <div className="tzdetail-summary-head">
-              <span className="tzdetail-category-pill">{product.category || "Sản phẩm"}</span>
+              <span className="tzdetail-category-pill">{product.categoryName || "Sản phẩm"}</span>
               <h1 className="tzdetail-title">{product.name}</h1>
               <p className="tzdetail-description">{shortDescription}</p>
             </div>

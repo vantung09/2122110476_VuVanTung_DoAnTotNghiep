@@ -23,6 +23,10 @@ public class JwtService {
     private long jwtExpiration;
 
     public String generateToken(String email, String role, Long userId, String fullName) {
+        return generateToken(email, role, userId, fullName, jwtExpiration);
+    }
+
+    public String generateToken(String email, String role, Long userId, String fullName, long expiration) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role);
         claims.put("userId", userId);
@@ -32,7 +36,7 @@ public class JwtService {
                 .setClaims(claims)
                 .setSubject(email)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

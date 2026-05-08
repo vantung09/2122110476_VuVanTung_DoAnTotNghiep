@@ -11,6 +11,11 @@ target/
 
 # Env
 .env
+.env.*
+!.env.example
+
+# Runtime uploads
+backend/uploads/
 
 # OS
 .DS_Store
