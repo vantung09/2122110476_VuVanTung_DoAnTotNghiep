@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import axiosClient from "../api/axiosClient";
+import { loadProductById, loadProducts } from "../api/productCatalog";
 import StoreActionButton, {
   StoreBagIcon,
   StoreCheckIcon,
@@ -476,25 +476,24 @@ export default function ProductDetailPage() {
     async function fetchData() {
       setLoading(true);
       try {
-        const productResponse = await axiosClient.get(`/products/${id}`);
+        const currentProduct = await loadProductById(id);
         if (cancelled) return;
 
-        const currentProduct = productResponse.data;
         setProduct(currentProduct);
 
         try {
-          const listResponse = await axiosClient.get("/products");
+          const productList = await loadProducts();
           if (cancelled) return;
 
           const currentId = Number(id);
-          const currentCategory = (currentProduct.category || "").toLowerCase();
+          const currentCategory = (currentProduct.categoryName || currentProduct.category || "").toLowerCase();
           const currentBrand = (currentProduct.brand || "").toLowerCase();
 
-          const related = Array.isArray(listResponse.data)
-            ? listResponse.data
+          const related = Array.isArray(productList)
+            ? productList
                 .filter((item) => item.id !== currentId)
                 .filter((item) => {
-                  const itemCategory = (item.category || "").toLowerCase();
+                  const itemCategory = (item.categoryName || item.category || "").toLowerCase();
                   const itemBrand = (item.brand || "").toLowerCase();
                   return itemCategory === currentCategory || itemBrand === currentBrand;
                 })

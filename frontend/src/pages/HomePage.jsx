@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import axiosClient from "../api/axiosClient";
+import { loadProducts } from "../api/productCatalog";
 import flashSaleLogo from "../assets/flashsale-logo.svg";
 import ProductCard from "../components/ProductCard";
 import SearchHistoryDropdown from "../components/SearchHistoryDropdown";
@@ -515,8 +515,8 @@ export default function HomePage() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    axiosClient.get("/products")
-      .then((res) => setProducts(res.data || []))
+    loadProducts()
+      .then((items) => setProducts(items))
       .catch(() => setError("Không tải được sản phẩm. Vui lòng chạy backend và MySQL."))
       .finally(() => setLoading(false));
   }, []);

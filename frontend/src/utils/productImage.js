@@ -4,15 +4,18 @@ const ABSOLUTE_URL_PATTERN = /^https?:\/\//i;
 const SPECIAL_URL_PATTERN = /^(data|blob):/i;
 const LOCAL_IMAGE_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
+function resolveBackendAsset(path) {
+  return BACKEND_BASE_URL ? `${BACKEND_BASE_URL}${path}` : path;
+}
+
 const CATEGORY_FALLBACKS = {
-  iphone: `${BACKEND_BASE_URL}/images/iphone-16-pro-den-650x650.png`,
-  mac: `${BACKEND_BASE_URL}/images/hinhanh/macbook-air-13-inch-m4-thumb-xanh-den-650x650.png`,
-  ipad: `${BACKEND_BASE_URL}/images/hinhanh/ipad-air-m3-11-inch-wifi-gray-thumb-650x650.png`,
-  watch: `${BACKEND_BASE_URL}/images/hinhanh/apple-watch-series-10-lte-42mm-day-vai-den-tb-650x650.png`,
-  "tai nghe": `${BACKEND_BASE_URL}/images/hinhanh/airpods-4-thumb-650x650.png`,
-  loa: `${BACKEND_BASE_URL}/images/hinhanh/loa-bluetooth-jbl-clip-5-thumb-650x650.png`,
-  "phu kien": `${BACKEND_BASE_URL}/images/hinhanh/apple-pencil-pro-650x650.png`,
-  "phụ kiện": `${BACKEND_BASE_URL}/images/hinhanh/apple-pencil-pro-650x650.png`,
+  iphone: resolveBackendAsset("/images/iphone-16-pro-den-650x650.png"),
+  mac: resolveBackendAsset("/images/hinhanh/macbook-air-13-inch-m4-thumb-xanh-den-650x650.png"),
+  ipad: resolveBackendAsset("/images/hinhanh/ipad-air-m3-11-inch-wifi-gray-thumb-650x650.png"),
+  watch: resolveBackendAsset("/images/hinhanh/apple-watch-series-10-lte-42mm-day-vai-den-tb-650x650.png"),
+  "tai nghe": resolveBackendAsset("/images/hinhanh/airpods-4-thumb-650x650.png"),
+  loa: resolveBackendAsset("/images/hinhanh/loa-bluetooth-jbl-clip-5-thumb-650x650.png"),
+  "phu kien": resolveBackendAsset("/images/hinhanh/apple-pencil-pro-650x650.png"),
   banner: "/banners/0563809d876094fa2bb7606be2055307.png",
 };
 
@@ -30,7 +33,8 @@ function normalizeText(value) {
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u0111/g, "d");
 }
 
 export function getFallbackImage(product) {
@@ -49,7 +53,7 @@ export function getFallbackImage(product) {
     return nameMatch.url;
   }
 
-  return `${BACKEND_BASE_URL}/images/iphone-15-green-1-2-650x650.png`;
+  return resolveBackendAsset("/images/iphone-15-green-1-2-650x650.png");
 }
 
 function resolveAbsoluteImageUrl(imageUrl) {
@@ -60,7 +64,7 @@ function resolveAbsoluteImageUrl(imageUrl) {
   try {
     const url = new URL(imageUrl);
     if (LOCAL_IMAGE_HOSTS.has(url.hostname) && url.pathname.startsWith("/images/")) {
-      return `${BACKEND_BASE_URL}${url.pathname}${url.search}${url.hash}`;
+      return resolveBackendAsset(`${url.pathname}${url.search}${url.hash}`);
     }
   } catch {
     return imageUrl;
@@ -82,10 +86,10 @@ export function resolveProductImageUrl(rawImageUrl) {
   }
 
   if (imageUrl.startsWith("/")) {
-    return `${BACKEND_BASE_URL}${imageUrl}`;
+    return resolveBackendAsset(imageUrl);
   }
 
-  return `${BACKEND_BASE_URL}/${imageUrl.replace(/^\.?\//, "")}`;
+  return resolveBackendAsset(`/${imageUrl.replace(/^\.?\//, "")}`);
 }
 
 export function getProductImageUrl(product) {

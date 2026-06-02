@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
+import { loadProducts } from "../api/productCatalog";
 import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoriteContext";
 import { getProductImageUrl, handleProductImageError } from "../utils/productImage";
@@ -360,8 +361,8 @@ export default function ProductAssistant() {
   useEffect(() => {
     if (!open || products.length || loadingProducts) return;
     setLoadingProducts(true);
-    axiosClient.get("/products")
-      .then((res) => setProducts(res.data || []))
+    loadProducts()
+      .then((items) => setProducts(items))
       .catch(() => setProducts([]))
       .finally(() => setLoadingProducts(false));
   }, [open, products.length, loadingProducts]);
