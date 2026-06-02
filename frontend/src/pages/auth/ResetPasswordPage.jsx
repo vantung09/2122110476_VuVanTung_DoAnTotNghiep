@@ -30,6 +30,11 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
+    if (!supabase) {
+      setError("Tinh nang dat lai mat khau chua duoc cau hinh.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const { error: updateError } = await supabase.auth.updateUser({

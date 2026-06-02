@@ -101,6 +101,17 @@ VITE_BACKEND_BASE_URL=http://localhost:8085
 VITE_API_BASE_URL=http://localhost:8085/api
 ```
 
+Khi deploy frontend len Vercel, set cac bien production trong Project Settings thay vi de mac dinh `localhost`:
+
+```env
+VITE_BACKEND_BASE_URL=https://your-backend-domain
+VITE_API_BASE_URL=https://your-backend-domain/api
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+Khi deploy backend, giu `JPA_DDL_AUTO=update` hoac `validate`. Khong dung `create`/`create-drop` voi database that vi Hibernate se tao lai schema va co the lam mat du lieu. App se chan startup neu phat hien cau hinh nay, tru khi ban co tinh dat `APP_ALLOW_DESTRUCTIVE_DDL=true` cho database test co the xoa.
+
 ## Don File Sinh Ra
 
 Chay tu thu muc `tungzone/`:

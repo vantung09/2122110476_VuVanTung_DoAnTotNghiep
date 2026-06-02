@@ -31,6 +31,10 @@ export default function FavoritesPage() {
       return;
     }
     if (items.length === 0) return;
+    if (!supabase) {
+      setShareError("Tinh nang chia se danh sach chua duoc cau hinh.");
+      return;
+    }
 
     setShareLoading(true);
     setShareError("");

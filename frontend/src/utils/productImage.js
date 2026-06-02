@@ -2,6 +2,7 @@ import { BACKEND_BASE_URL } from "../config/appConfig";
 
 const ABSOLUTE_URL_PATTERN = /^https?:\/\//i;
 const SPECIAL_URL_PATTERN = /^(data|blob):/i;
+const LOCAL_IMAGE_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 const CATEGORY_FALLBACKS = {
   iphone: `${BACKEND_BASE_URL}/images/iphone-16-pro-den-650x650.png`,
@@ -25,12 +26,19 @@ const NAME_FALLBACKS = [
   { pattern: /iphone/i, url: CATEGORY_FALLBACKS.iphone },
 ];
 
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 export function getFallbackImage(product) {
-  const category = String(product?.category || "").toLowerCase();
-  const name = String(product?.name || "").toLowerCase();
+  const category = normalizeText(product?.categoryName || product?.category);
+  const name = normalizeText(product?.name);
 
   const categoryMatch = Object.entries(CATEGORY_FALLBACKS).find(([key]) =>
-    category.includes(key)
+    category.includes(normalizeText(key))
   );
   if (categoryMatch) {
     return categoryMatch[1];
@@ -44,12 +52,29 @@ export function getFallbackImage(product) {
   return `${BACKEND_BASE_URL}/images/iphone-15-green-1-2-650x650.png`;
 }
 
+function resolveAbsoluteImageUrl(imageUrl) {
+  if (SPECIAL_URL_PATTERN.test(imageUrl)) {
+    return imageUrl;
+  }
+
+  try {
+    const url = new URL(imageUrl);
+    if (LOCAL_IMAGE_HOSTS.has(url.hostname) && url.pathname.startsWith("/images/")) {
+      return `${BACKEND_BASE_URL}${url.pathname}${url.search}${url.hash}`;
+    }
+  } catch {
+    return imageUrl;
+  }
+
+  return imageUrl;
+}
+
 export function resolveProductImageUrl(rawImageUrl) {
   const imageUrl = String(rawImageUrl || "").trim();
   if (!imageUrl) return "";
 
   if (ABSOLUTE_URL_PATTERN.test(imageUrl) || SPECIAL_URL_PATTERN.test(imageUrl)) {
-    return imageUrl;
+    return resolveAbsoluteImageUrl(imageUrl);
   }
 
   if (imageUrl.startsWith("/banners/") || imageUrl.startsWith("/icons/")) {

@@ -7,7 +7,7 @@ import { getProductImageUrl, handleProductImageError } from "../utils/productIma
 
 const QUICK_PROMPTS = [
   "iPhone dưới 15 triệu còn hàng",
-  "So sánh MacBook Air và iPad Pro",
+  "MacBook cho sinh viên",
   "Tai nghe nghe nhạc hay, có sale",
   "Flash sale hôm nay có gì?",
   "Combo phụ kiện cho iPhone",
@@ -160,7 +160,6 @@ function getSaving(product) {
 function detectIntent(message) {
   const text = normalizeText(message);
   return {
-    compare: includesAny(text, ["so sanh", "khac nhau", "nen chon", "chon cai nao", "hon gi"]),
     cheapest: includesAny(text, ["re nhat", "gia re", "mem nhat", "tiet kiem"]),
     premium: includesAny(text, ["cao cap", "manh nhat", "tot nhat", "pro", "flagship", "xịn", "xin"]),
     sale: includesAny(text, ["sale", "flash sale", "flashsale", "giam", "khuyen mai", "uu dai", "giam gia"]),
@@ -291,17 +290,6 @@ function getAffordableProducts(products, limit = 4) {
     .slice(0, limit);
 }
 
-function buildComparisonText(products) {
-  const lines = products.slice(0, 3).map((product, index) => {
-    const discount = getDiscountPercent(product);
-    const stock = Number(product.stock || 0);
-    const stockText = stock > 0 ? `còn ${stock}` : "hết hàng";
-    const discountText = discount > 0 ? `, giảm ${discount}%` : "";
-    return `${index + 1}. ${product.name}: ${formatPrice(product.price)} (${stockText}${discountText})`;
-  });
-  return `Mình so sánh nhanh các lựa chọn nổi bật:\n${lines.join("\n")}\n\nNếu ưu tiên giá, chọn mẫu rẻ nhất còn hàng. Nếu ưu tiên dùng lâu và hiệu năng/camera, chọn mẫu Pro hoặc cấu hình cao hơn.`;
-}
-
 function buildReply(message, products, previousProducts = []) {
   if (!products.length) {
     return {
@@ -320,14 +308,6 @@ function buildReply(message, products, previousProducts = []) {
       text: `${summarizeCatalog(products)} Bạn nói ngân sách, nhu cầu hoặc dòng máy, mình sẽ lọc và giải thích nên chọn mẫu nào.`,
       products: deals,
       followups: ["iPhone dưới 15 triệu", "MacBook cho sinh viên", "Tai nghe đang sale"],
-    };
-  }
-
-  if (intent.compare && previousProducts.length >= 2 && tokenize(message).length <= 4) {
-    return {
-      text: buildComparisonText(previousProducts),
-      products: previousProducts.slice(0, 3),
-      followups: ["Chọn mẫu rẻ hơn", "Ưu tiên hiệu năng", "Ưu tiên còn hàng"],
     };
   }
 
@@ -352,18 +332,10 @@ function buildReply(message, products, previousProducts = []) {
   const budgetText = budget?.max ? ` trong mức tối đa ${formatPrice(budget.max)}` : budget?.min ? ` từ ${formatPrice(budget.min)} trở lên` : "";
   const scopeText = [category, need].filter(Boolean).join(", ");
 
-  if (intent.compare && matches.length >= 2) {
-    return {
-      text: buildComparisonText(matches),
-      products: matches.slice(0, 3),
-      followups: ["Mẫu nào đáng tiền nhất?", "Chọn theo pin", "Chọn theo camera"],
-    };
-  }
-
   return {
     text: `Mình đề xuất ${matches.length} lựa chọn${budgetText}${scopeText ? ` cho ${scopeText}` : ""}. Mình ưu tiên sản phẩm còn hàng, đúng nhu cầu và có giá tốt trước.`,
     products: matches,
-    followups: ["So sánh các mẫu này", "Chọn mẫu đáng tiền nhất", "Tìm rẻ hơn"],
+    followups: ["Tư vấn mẫu đáng mua", "Chọn mẫu đáng tiền nhất", "Tìm rẻ hơn"],
   };
 }
 
@@ -374,11 +346,12 @@ export default function ProductAssistant() {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [message, setMessage] = useState("");
+  const [aiThinking, setAiThinking] = useState(false);
   const messageListRef = useRef(null);
   const [conversation, setConversation] = useState([
     {
       role: "assistant",
-      text: "Chào bạn, mình là AI tư vấn TungZone. Mình có thể lọc sản phẩm theo ngân sách, nhu cầu, tồn kho, sale và so sánh nhanh để bạn chọn dễ hơn.",
+      text: "Chào bạn, mình là AI tư vấn TungZone. Mình có thể lọc sản phẩm theo ngân sách, nhu cầu, tồn kho và sale để bạn chọn dễ hơn.",
       products: [],
       followups: ["iPhone dưới 15 triệu", "MacBook cho sinh viên", "Tai nghe đang sale"],
     },
@@ -406,19 +379,51 @@ export default function ProductAssistant() {
     return previous?.products || [];
   }, [conversation]);
 
-  const submitMessage = (value = message) => {
+  const submitMessage = async (value = message) => {
     const cleanMessage = value.trim();
-    if (!cleanMessage) return;
-    const reply = loadingProducts
-      ? { text: "Mình đang tải dữ liệu sản phẩm, chờ một chút rồi hỏi lại nhé.", products: [] }
-      : buildReply(cleanMessage, products, lastAssistantProducts);
+    if (!cleanMessage || aiThinking) return;
+
+    const history = conversation.slice(-6).map((item) => ({
+      role: item.role,
+      text: item.text,
+    }));
 
     setConversation((prev) => [
       ...prev,
       { role: "user", text: cleanMessage, products: [] },
-      { role: "assistant", ...reply },
     ]);
     setMessage("");
+    setAiThinking(true);
+
+    try {
+      const { data } = await axiosClient.post("/ai/advisor", {
+        message: cleanMessage,
+        history,
+      });
+
+      const reply = {
+        text: data?.text || "Mình chưa có câu trả lời phù hợp. Bạn thử nói rõ ngân sách hoặc nhu cầu chính nhé.",
+        products: data?.products || [],
+        followups: data?.followups || [],
+        aiPowered: data?.aiPowered,
+      };
+
+      setConversation((prev) => [
+        ...prev,
+        { role: "assistant", ...reply },
+      ]);
+    } catch {
+      const reply = loadingProducts
+        ? { text: "Mình đang tải dữ liệu sản phẩm, chờ một chút rồi hỏi lại nhé.", products: [] }
+        : buildReply(cleanMessage, products, lastAssistantProducts);
+
+      setConversation((prev) => [
+        ...prev,
+        { role: "assistant", ...reply },
+      ]);
+    } finally {
+      setAiThinking(false);
+    }
   };
 
   const resetConversation = () => {
@@ -488,7 +493,7 @@ export default function ProductAssistant() {
           <header className="tz-assistant-header">
             <div>
               <strong>AI tư vấn TungZone</strong>
-              <span>{loadingProducts ? "Đang đọc catalog..." : "Hiểu ngân sách, nhu cầu, tồn kho và sale"}</span>
+              <span>{aiThinking ? "Đang phân tích bằng AI..." : loadingProducts ? "Đang đọc catalog..." : "Hiểu ngân sách, nhu cầu, tồn kho và sale"}</span>
             </div>
             <div className="tz-assistant-header-actions">
               <button type="button" onClick={resetConversation} aria-label="Làm mới hội thoại">
@@ -508,7 +513,7 @@ export default function ProductAssistant() {
                 {item.followups?.length ? (
                   <div className="tz-assistant-followups">
                     {item.followups.map((prompt) => (
-                      <button key={prompt} type="button" onClick={() => submitMessage(prompt)}>
+                      <button key={prompt} type="button" onClick={() => submitMessage(prompt)} disabled={aiThinking}>
                         {prompt}
                       </button>
                     ))}
@@ -523,11 +528,17 @@ export default function ProductAssistant() {
                 {renderProducts(suggestedProducts)}
               </div>
             ) : null}
+
+            {aiThinking ? (
+              <div className="tz-assistant-message assistant">
+                <p>AI đang đọc catalog, so ngân sách và chọn phương án hợp nhất...</p>
+              </div>
+            ) : null}
           </div>
 
           <div className="tz-assistant-prompts">
             {QUICK_PROMPTS.map((prompt) => (
-              <button key={prompt} type="button" onClick={() => submitMessage(prompt)}>
+              <button key={prompt} type="button" onClick={() => submitMessage(prompt)} disabled={aiThinking}>
                 {prompt}
               </button>
             ))}
@@ -543,9 +554,12 @@ export default function ProductAssistant() {
             <input
               value={message}
               onChange={(event) => setMessage(event.target.value)}
-              placeholder="Ví dụ: so sánh iPhone 15 và 16 dưới 20 triệu..."
+              placeholder="Ví dụ: iPhone dưới 20 triệu chụp ảnh đẹp..."
+              disabled={aiThinking}
             />
-            <button type="submit">Gửi</button>
+            <button type="submit" disabled={!message.trim() || aiThinking}>
+              {aiThinking ? "Đợi..." : "Gửi"}
+            </button>
           </form>
         </section>
       ) : null}

@@ -28,6 +28,11 @@ export default function OrderTrackingPage() {
     }
     setLoading(true);
     setError("");
+    if (!supabase) {
+      setError("Tinh nang theo doi don hang chua duoc cau hinh.");
+      setLoading(false);
+      return;
+    }
     try {
       const { data, error: fetchError } = await supabase
         .from("order_tracking")

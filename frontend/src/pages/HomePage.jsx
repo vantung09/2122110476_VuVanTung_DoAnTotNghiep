@@ -39,7 +39,7 @@ const PRICE_RANGES = [
 
 const HOMEPAGE_BANNERS = [
   { id: "b1", imageUrl: "/banners/0563809d876094fa2bb7606be2055307.png", alt: "Banner 1" },
-  { id: "b2", imageUrl: "/banners/38356f3a92241b0370c46bd784756025.png", alt: "Banner 2" },
+  { id: "b2", imageUrl: "/banners/9550c151fb9ea098db497dbe31f59eaf.jpg", alt: "Banner 2" },
   { id: "b3", imageUrl: "/banners/9a9b662b46b6c9bc3c4db6d4ebc6c2b8.jpg", alt: "Banner 3" },
   { id: "b4", imageUrl: "/banners/d0b16b549d82743e1793bef778366361.png", alt: "Banner 4" },
   { id: "b5", imageUrl: "/banners/ee47b489951f3039bfad24e9840c66a8.png", alt: "Banner 5" },
@@ -212,6 +212,7 @@ function FlashSaleProduct({ product }) {
             width="207"
             height="207"
             loading="lazy"
+            decoding="async"
             onError={(event) => handleProductImageError(event, product)}
           />
         </div>
@@ -252,8 +253,15 @@ function FlashSaleProduct({ product }) {
   );
 }
 
-function FlashSaleSection({ products, now, onShowAll }) {
+function FlashSaleSection({ products, onShowAll }) {
   const scrollerRef = useRef(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const activeEnds = products
     .map((product) => parseTime(product.flashSaleEndAt))
     .filter(Boolean)
@@ -333,9 +341,17 @@ function BannerCarousel({ banners }) {
     <div className="tz-banner-root" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <div className="tz-banner-frame">
         <div className="tz-banner-track" style={{ transform: `translateX(-${index * 100}%)` }}>
-          {banners.map((b) => (
+          {banners.map((b, i) => (
             <div className="tz-banner-slide" key={b.id}>
-              <img src={b.imageUrl} alt={b.alt} loading="eager" />
+              <img
+                src={b.imageUrl}
+                alt={b.alt}
+                loading={i < 2 ? "eager" : "lazy"}
+                fetchpriority={i === 0 ? "high" : "low"}
+                decoding="async"
+                width="2880"
+                height="800"
+              />
             </div>
           ))}
         </div>
@@ -367,10 +383,14 @@ function FilterBar({ chips, selectedCategory, onCategoryChange, sortKey, onSortC
   const hasFilter = priceRange || sortKey !== "featured";
   const handleKeywordChange = (value) => {
     onKeywordChange(value);
-    if (value.trim()) {
-      addSearch(value);
-    }
   };
+
+  useEffect(() => {
+    const trimmed = keyword.trim();
+    if (trimmed.length < 2) return;
+    const id = window.setTimeout(() => addSearch(trimmed), 700);
+    return () => window.clearTimeout(id);
+  }, [keyword, addSearch]);
 
   return (
     <div className="tz-filter-root">
@@ -465,7 +485,6 @@ export default function HomePage() {
   const [keyword, setKeyword] = useState("");
   const [sortKey, setSortKey] = useState("featured");
   const [priceRange, setPriceRange] = useState("");
-  const [now, setNow] = useState(() => Date.now());
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
@@ -502,11 +521,6 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-
   const selectedCategory = searchParams.get("category") || "";
 
   const handleCategoryChange = useCallback((key) => {
@@ -533,6 +547,7 @@ export default function HomePage() {
   }, [catalogProducts, keyword, selectedCategory, sortKey, priceRange]);
 
   const flashSaleProducts = useMemo(() => {
+    const now = Date.now();
     return catalogProducts
       .filter((product) => isFlashSaleProduct(product, now))
       .sort((a, b) => {
@@ -543,7 +558,7 @@ export default function HomePage() {
         return Number(a.price || 0) - Number(b.price || 0);
       })
       .slice(0, 20);
-  }, [catalogProducts, now]);
+  }, [catalogProducts]);
 
   const showFlashSaleProducts = useCallback(() => {
     setKeyword("");
@@ -575,7 +590,6 @@ export default function HomePage() {
         {!loading && !error && (
           <FlashSaleSection
             products={flashSaleProducts}
-            now={now}
             onShowAll={showFlashSaleProducts}
           />
         )}

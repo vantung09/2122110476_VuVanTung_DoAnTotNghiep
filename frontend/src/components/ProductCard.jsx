@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoriteContext";
@@ -21,7 +21,7 @@ function getFlashSaleRemaining(product, stock) {
   return stock;
 }
 
-export default function ProductCard({ product }) {
+function ProductCard({ product }) {
   const { addToCart } = useCart();
   const { isFavorite, toggleFavorite } = useFavorites();
   const [cartAnimated, setCartAnimated] = useState(false);
@@ -48,6 +48,7 @@ export default function ProductCard({ product }) {
   const flashSalePercent = flashSaleTotal > 0
     ? Math.max(0, Math.min(100, (flashSaleRemaining / flashSaleTotal) * 100))
     : 0;
+  const productImageUrl = useMemo(() => getProductImageUrl(product), [product]);
 
   const triggerCart = () => {
     setCartAnimated(true);
@@ -98,11 +99,14 @@ export default function ProductCard({ product }) {
         </div>
 
         <img
-          src={getProductImageUrl(product)}
+          src={productImageUrl}
           alt={product.name}
           className="product-image"
           onError={(e) => handleProductImageError(e, product)}
           loading="lazy"
+          decoding="async"
+          width="650"
+          height="650"
         />
 
         {flashSaleActive && (
@@ -193,3 +197,5 @@ export default function ProductCard({ product }) {
     </Link>
   );
 }
+
+export default memo(ProductCard);

@@ -1,8 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./AuthContext";
-import supabase from "../api/supabaseClient";
 
 const ChatContext = createContext(null);
+
+async function getSupabaseClient() {
+  const { default: supabase } = await import("../api/supabaseClient");
+  return supabase;
+}
 
 export function ChatProvider({ children }) {
   const { user } = useAuth();
@@ -15,6 +19,8 @@ export function ChatProvider({ children }) {
 
   const fetchOrCreateSession = async () => {
     if (!userId) return;
+    const supabase = await getSupabaseClient();
+    if (!supabase) return;
     try {
       const { data: existing } = await supabase
         .from("chat_sessions")
@@ -61,6 +67,8 @@ export function ChatProvider({ children }) {
 
   const sendMessage = async (text) => {
     if (!text.trim() || !session || !userId) return;
+    const supabase = await getSupabaseClient();
+    if (!supabase) return;
     const userName = user?.fullName || user?.email || "Khach";
 
     const { data: msg, error } = await supabase
@@ -86,6 +94,8 @@ export function ChatProvider({ children }) {
 
   const refreshMessages = async () => {
     if (!session) return;
+    const supabase = await getSupabaseClient();
+    if (!supabase) return;
     const { data } = await supabase
       .from("chat_messages")
       .select("*")
@@ -96,6 +106,8 @@ export function ChatProvider({ children }) {
 
   const closeSession = async () => {
     if (!session) return;
+    const supabase = await getSupabaseClient();
+    if (!supabase) return;
     await supabase
       .from("chat_sessions")
       .update({ status: "closed" })

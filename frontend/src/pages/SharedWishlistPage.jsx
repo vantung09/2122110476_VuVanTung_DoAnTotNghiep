@@ -14,6 +14,13 @@ export default function SharedWishlistPage() {
     let mounted = true;
 
     const fetchWishlist = async () => {
+      if (!supabase) {
+        if (mounted) {
+          setError("Tinh nang chia se danh sach chua duoc cau hinh.");
+          setLoading(false);
+        }
+        return;
+      }
       try {
         const { data, error: fetchError } = await supabase
           .from("shared_wishlists")

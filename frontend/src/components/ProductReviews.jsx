@@ -13,6 +13,12 @@ export default function ProductReviews({ productId }) {
   const [success, setSuccess] = useState("");
 
   const fetchReviews = async () => {
+    if (!supabase) {
+      setReviews([]);
+      setError("Tinh nang danh gia chua duoc cau hinh.");
+      setLoading(false);
+      return;
+    }
     try {
       const { data, error: fetchError } = await supabase
         .from("product_reviews")
@@ -39,6 +45,10 @@ export default function ProductReviews({ productId }) {
     e.preventDefault();
     if (!user) {
       setError("Vui lòng đăng nhập để đánh giá.");
+      return;
+    }
+    if (!supabase) {
+      setError("Tinh nang danh gia chua duoc cau hinh.");
       return;
     }
     setSubmitting(true);
@@ -101,6 +111,8 @@ export default function ProductReviews({ productId }) {
           </button>
         ) : null}
       </div>
+
+      {error && !showForm ? <div className="error-box">{error}</div> : null}
 
       {showForm ? (
         <form className="review-form card" onSubmit={handleSubmit}>

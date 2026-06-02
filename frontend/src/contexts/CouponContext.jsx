@@ -1,8 +1,12 @@
 import { createContext, useContext, useMemo, useState } from "react";
-import supabase from "../api/supabaseClient";
 import { useAuth } from "./AuthContext";
 
 const CouponContext = createContext(null);
+
+async function getSupabaseClient() {
+  const { default: supabase } = await import("../api/supabaseClient");
+  return supabase;
+}
 
 export function CouponProvider({ children }) {
   const { user } = useAuth();
@@ -13,6 +17,12 @@ export function CouponProvider({ children }) {
     setCouponError("");
     if (!code.trim()) {
       setCouponError("Vui lòng nhập mã giảm giá.");
+      return null;
+    }
+
+    const supabase = await getSupabaseClient();
+    if (!supabase) {
+      setCouponError("Tinh nang ma giam gia chua duoc cau hinh.");
       return null;
     }
 
@@ -94,6 +104,8 @@ export function CouponProvider({ children }) {
 
   const recordUsage = async (orderId) => {
     if (!appliedCoupon || !user) return;
+    const supabase = await getSupabaseClient();
+    if (!supabase) return;
     const userId = user.userId || user.email;
     await supabase.from("coupon_usages").insert({
       coupon_id: appliedCoupon.id,

@@ -67,8 +67,8 @@ public class DataSeeder implements CommandLineRunner {
             }
         }
 
-        String imageBaseUrl = "http://localhost:8080/images/";
-        String assetBaseUrl = "http://localhost:8080/images/hinhanh/";
+        String imageBaseUrl = "/images/";
+        String assetBaseUrl = "/images/hinhanh/";
 
         List<ProductSeed> seeds = List.of(
                 new ProductSeed(

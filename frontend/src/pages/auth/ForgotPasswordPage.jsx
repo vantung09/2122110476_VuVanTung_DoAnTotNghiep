@@ -17,6 +17,11 @@ export default function ForgotPasswordPage() {
     }
     setLoading(true);
     setError("");
+    if (!supabase) {
+      setError("Tinh nang dat lai mat khau chua duoc cau hinh.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(

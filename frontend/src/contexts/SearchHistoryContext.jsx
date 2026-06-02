@@ -1,8 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./AuthContext";
-import supabase from "../api/supabaseClient";
 
 const SearchHistoryContext = createContext(null);
+
+async function getSupabaseClient() {
+  const { default: supabase } = await import("../api/supabaseClient");
+  return supabase;
+}
 
 export function SearchHistoryProvider({ children }) {
   const { user } = useAuth();
@@ -10,6 +14,11 @@ export function SearchHistoryProvider({ children }) {
 
   const fetchHistory = async () => {
     if (!user) {
+      setHistory([]);
+      return;
+    }
+    const supabase = await getSupabaseClient();
+    if (!supabase) {
       setHistory([]);
       return;
     }
@@ -32,6 +41,8 @@ export function SearchHistoryProvider({ children }) {
 
   const addSearch = async (query) => {
     if (!user || !query.trim()) return;
+    const supabase = await getSupabaseClient();
+    if (!supabase) return;
     const trimmed = query.trim();
     const userId = user.userId || user.email;
 
@@ -49,12 +60,16 @@ export function SearchHistoryProvider({ children }) {
 
   const clearHistory = async () => {
     if (!user) return;
+    const supabase = await getSupabaseClient();
+    if (!supabase) return;
     const userId = user.userId || user.email;
     await supabase.from("search_history").delete().eq("user_id", userId);
     setHistory([]);
   };
 
   const deleteItem = async (id) => {
+    const supabase = await getSupabaseClient();
+    if (!supabase) return;
     await supabase.from("search_history").delete().eq("id", id);
     setHistory((prev) => prev.filter((h) => h.id !== id));
   };

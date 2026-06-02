@@ -7,7 +7,6 @@ import { CartProvider } from "./contexts/CartContext";
 import { FavoriteProvider } from "./contexts/FavoriteContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { SearchHistoryProvider } from "./contexts/SearchHistoryContext";
-import { CompareProvider } from "./contexts/CompareContext";
 import { CouponProvider } from "./contexts/CouponContext";
 import { ChatProvider } from "./contexts/ChatContext";
 import { ToastProvider } from "./contexts/ToastContext";
@@ -22,13 +21,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <CartProvider>
               <NotificationProvider>
                 <SearchHistoryProvider>
-                  <CompareProvider>
-                    <CouponProvider>
-                      <ChatProvider>
-                        <App />
-                      </ChatProvider>
-                    </CouponProvider>
-                  </CompareProvider>
+                  <CouponProvider>
+                    <ChatProvider>
+                      <App />
+                    </ChatProvider>
+                  </CouponProvider>
                 </SearchHistoryProvider>
               </NotificationProvider>
             </CartProvider>

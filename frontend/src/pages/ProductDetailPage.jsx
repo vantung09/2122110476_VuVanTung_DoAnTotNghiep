@@ -9,7 +9,6 @@ import StoreActionButton, {
 import ProductReviews from "../components/ProductReviews";
 import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoriteContext";
-import { useCompare } from "../contexts/CompareContext";
 import { getFallbackImage, getProductImageUrl, handleProductImageError } from "../utils/productImage";
 
 const CATEGORY_VARIANTS = {
@@ -124,7 +123,7 @@ const CATEGORY_BENEFITS = {
   audio: [
     {
       title: "Nghe thử tại chỗ",
-      desc: "Dễ so sánh cảm giác đeo, chất âm và độ phù hợp trước khi quyết định.",
+      desc: "Dễ cảm nhận trực tiếp cảm giác đeo, chất âm và độ phù hợp trước khi quyết định.",
     },
     {
       title: "Kết nối ổn định",
@@ -470,7 +469,6 @@ export default function ProductDetailPage() {
   const [favoriteAnimated, setFavoriteAnimated] = useState(false);
   const { addToCart } = useCart();
   const { isFavorite, toggleFavorite } = useFavorites();
-  const { addToCompare, isInCompare, removeFromCompare, count: compareCount } = useCompare();
 
   useEffect(() => {
     let cancelled = false;
@@ -824,14 +822,6 @@ export default function ProductDetailPage() {
               >
                 {favorite ? "Đã yêu thích" : "Yêu thích"}
               </StoreActionButton>
-
-              <button
-                className={`btn ${isInCompare(product.id) ? "btn-secondary" : "btn-primary"} btn-sm`}
-                type="button"
-                onClick={() => isInCompare(product.id) ? removeFromCompare(product.id) : addToCompare(product)}
-              >
-                {isInCompare(product.id) ? "Đã so sánh" : "So sánh"}
-              </button>
             </div>
           </aside>
         </div>
