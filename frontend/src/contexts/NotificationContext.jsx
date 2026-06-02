@@ -291,7 +291,8 @@ export function NotificationProvider({ children }) {
   const syncGeneratedNotifications = useCallback(async () => {
     try {
       const { data } = await axiosClient.get("/products/flash-sale");
-      (data || [])
+      const products = Array.isArray(data) ? data : [];
+      products
         .filter((product) => product?.id && product?.flashSaleActive !== false)
         .slice(0, 8)
         .forEach((product) => {
@@ -305,7 +306,8 @@ export function NotificationProvider({ children }) {
 
     try {
       const { data } = await axiosClient.get("/orders/my");
-      (data || [])
+      const orders = Array.isArray(data) ? data : [];
+      orders
         .filter((order) => order?.id && order?.status)
         .slice(0, 20)
         .forEach((order) => {

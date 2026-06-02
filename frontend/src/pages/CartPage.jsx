@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
+import { createLocalOrder, isBackendUnavailableError } from "../api/demoStore";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { useCoupon } from "../contexts/CouponContext";
@@ -243,6 +244,24 @@ export default function CartPage() {
     } catch (err) {
       const status = err?.response?.status;
       const data = err?.response?.data;
+
+      if (isBackendUnavailableError(err)) {
+        const order = createLocalOrder({
+          user,
+          items,
+          totalAmount: finalAmount,
+          customer,
+          deliveryMethod,
+        });
+        try {
+          await recordUsage(order.id);
+        } catch (_) {
+          // Coupon history is optional on the static Vercel demo.
+        }
+        clearCart();
+        navigate("/profile?tab=orders", { replace: true, state: { createdOrderId: order.id } });
+        return;
+      }
 
       if (status === 401) {
         setMomoError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");

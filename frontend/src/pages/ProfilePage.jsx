@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axiosClient from "../api/axiosClient";
+import { getLocalOrders, getLocalProfile, isBackendUnavailableError, isLocalAuthSession } from "../api/demoStore";
 import { useAuth } from "../contexts/AuthContext";
 import AccountTab from "./profile/AccountTab";
 import PasswordTab from "./profile/PasswordTab";
@@ -16,10 +17,18 @@ const PROFILE_TABS = [
 
 const VALID_TABS = new Set(PROFILE_TABS.map((tab) => tab.key));
 
+function isValidProfileData(data) {
+  return data && typeof data === "object" && !Array.isArray(data) && data.email;
+}
+
+function isOrderList(data) {
+  return Array.isArray(data);
+}
+
 export default function ProfilePage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout, updateUser } = useAuth();
+  const { user, logout, updateUser } = useAuth();
 
   const activeTab = useMemo(() => {
     const tab = new URLSearchParams(location.search).get("tab");
@@ -51,12 +60,28 @@ export default function ProfilePage() {
 
     const loadData = async () => {
       try {
+        if (isLocalAuthSession(user)) {
+          const localProfile = getLocalProfile(user);
+          syncProfileState(localProfile);
+          setOrders(getLocalOrders(localProfile));
+          setPageError("");
+          return;
+        }
+
         const [profileResult, ordersResult] = await Promise.allSettled([
           axiosClient.get("/users/me"),
           axiosClient.get("/orders/my"),
         ]);
 
         if (!mounted) return;
+
+        if (profileResult.status === "rejected" && isBackendUnavailableError(profileResult.reason)) {
+          const localProfile = getLocalProfile(user);
+          syncProfileState(localProfile);
+          setOrders(getLocalOrders(localProfile));
+          setPageError("");
+          return;
+        }
 
         if (profileResult.status === "rejected") {
           setPageError(profileResult.reason?.response?.status === 401
@@ -65,8 +90,23 @@ export default function ProfilePage() {
           return;
         }
 
-        syncProfileState(profileResult.value.data);
-        setOrders(ordersResult.value?.data || []);
+        const profileData = profileResult.value.data;
+        if (!isValidProfileData(profileData)) {
+          const localProfile = getLocalProfile(user);
+          syncProfileState(localProfile);
+          setOrders(getLocalOrders(localProfile));
+          setPageError("");
+          return;
+        }
+
+        syncProfileState(profileData);
+        setOrders(
+          ordersResult.status === "rejected" && isBackendUnavailableError(ordersResult.reason)
+            ? getLocalOrders(profileData)
+            : isOrderList(ordersResult.value?.data)
+            ? ordersResult.value.data
+            : getLocalOrders(profileData)
+        );
         setPageError("");
       } catch (error) {
         if (!mounted) return;
@@ -78,7 +118,7 @@ export default function ProfilePage() {
 
     loadData();
     return () => { mounted = false; };
-  }, []);
+  }, [user?.email, user?.userId]);
 
   const goToTab = (tab) => navigate(`/profile?tab=${tab}`);
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import { getLocalOrderDetail, isBackendUnavailableError } from "../../api/demoStore";
 import { getProductImageUrl, handleProductImageError } from "../../utils/productImage";
 
 const LOYALTY_POINT_RATE = 1_000;
@@ -84,11 +85,24 @@ export default function OrdersTab({ orders }) {
     setExpandedOrderId(orderId);
     if (orderDetailsMap[orderId]) return;
 
+    const localOrder = orders.find((order) => String(order.id) === String(orderId));
+    if (localOrder?.items?.length) {
+      setOrderDetailsMap((prev) => ({ ...prev, [orderId]: localOrder }));
+      return;
+    }
+
     try {
       setLoadingOrderId(orderId);
       const response = await axiosClient.get(`/orders/my/${orderId}`);
       setOrderDetailsMap((prev) => ({ ...prev, [orderId]: response.data }));
-    } catch {
+    } catch (error) {
+      if (isBackendUnavailableError(error)) {
+        const detail = getLocalOrderDetail(orderId);
+        if (detail) {
+          setOrderDetailsMap((prev) => ({ ...prev, [orderId]: detail }));
+          return;
+        }
+      }
       setPageError("Không tải được chi tiết đơn hàng.");
     } finally {
       setLoadingOrderId(null);

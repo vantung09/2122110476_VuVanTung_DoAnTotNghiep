@@ -77,7 +77,8 @@ export default function Header() {
     const loadVipStatus = async () => {
       try {
         const response = await axiosClient.get("/orders/my");
-        const totalCompletedAmount = (response.data || [])
+        const orders = Array.isArray(response.data) ? response.data : [];
+        const totalCompletedAmount = orders
           .filter((order) => order.status === "COMPLETED")
           .reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
 

@@ -19,8 +19,8 @@ export default function PurchasedTab({ orders }) {
   useEffect(() => {
     const completedOrders = orders.filter((order) => order.status === "COMPLETED");
     const missingOrderIds = completedOrders
-      .map((order) => order.id)
-      .filter((orderId) => !orderDetailsMap[orderId]);
+      .filter((order) => !order.items?.length && !orderDetailsMap[order.id])
+      .map((order) => order.id);
 
     if (!missingOrderIds.length) return;
 
@@ -63,7 +63,7 @@ export default function PurchasedTab({ orders }) {
     orders
       .filter((order) => order.status === "COMPLETED")
       .forEach((order) => {
-        const detail = orderDetailsMap[order.id];
+        const detail = orderDetailsMap[order.id] || order;
         if (!detail?.items?.length) return;
 
         detail.items.forEach((item, index) => {

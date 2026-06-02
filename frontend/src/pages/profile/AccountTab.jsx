@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import { isBackendUnavailableError, updateLocalProfile } from "../../api/demoStore";
 import { getProductImageUrl, handleProductImageError } from "../../utils/productImage";
 
 const VIP_THRESHOLD = 40_000_000;
@@ -173,6 +174,12 @@ export default function AccountTab({ profile, orders, onProfileUpdate }) {
       onProfileUpdate(response.data);
       setAccountMessage("Đã cập nhật thông tin tài khoản.");
     } catch (error) {
+      if (isBackendUnavailableError(error)) {
+        const localProfile = updateLocalProfile(profile, payload);
+        onProfileUpdate(localProfile);
+        setAccountMessage("Da cap nhat thong tin tai khoan tren ban demo.");
+        return;
+      }
       setAccountError(error.response?.data?.message || "Cập nhật thông tin thất bại.");
     } finally {
       setAccountSaving(false);

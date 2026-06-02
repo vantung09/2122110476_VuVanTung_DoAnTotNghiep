@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
+import {
+  isBackendUnavailableError,
+  loginLocalUser,
+  registerLocalUser,
+  requestLocalPasswordReset,
+  resetLocalPassword,
+} from "../../api/demoStore";
 import { useAuth } from "../../contexts/AuthContext";
 
 const DEFAULT_FORM = {
@@ -259,6 +266,62 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
           : mode === "login"
           ? "Đăng nhập thất bại"
           : "Đăng ký thất bại";
+      if (isBackendUnavailableError(err)) {
+        try {
+          if (mode === "forgot") {
+            if (resetStep === "request") {
+              const response = requestLocalPasswordReset(resetForm.email);
+              setSuccess(response.message);
+              setResetStep("confirm");
+            } else {
+              if (resetForm.newPassword !== resetForm.confirmNewPassword) {
+                setError("Mat khau moi xac nhan khong khop.");
+                return;
+              }
+              resetLocalPassword({
+                email: resetForm.email,
+                token: resetForm.token,
+                newPassword: resetForm.newPassword,
+              });
+              setSuccess("Da dat lai mat khau tren ban demo. Ban co the dang nhap lai.");
+              setResetForm(DEFAULT_RESET_FORM);
+              setResetStep("request");
+              setMode("login");
+              navigate("/login");
+            }
+          } else if (mode === "login") {
+            const payload = loginLocalUser({
+              email: form.email,
+              password: form.password,
+            });
+            login(payload);
+            const redirectTarget = location.state?.from;
+            navigate(redirectTarget || "/");
+          } else {
+            if (form.password !== form.confirmPassword) {
+              setError("Mat khau xac nhan khong khop.");
+              return;
+            }
+            if (!form.agree) {
+              setError("Vui long dong y voi dieu khoan su dung.");
+              return;
+            }
+            const fullName = [form.lastName, form.firstName].filter(Boolean).join(" ").trim();
+            const payload = registerLocalUser({
+              fullName,
+              email: form.email,
+              password: form.password,
+            });
+            login(payload);
+            const redirectTarget = location.state?.from;
+            navigate(redirectTarget || "/");
+          }
+          return;
+        } catch (localError) {
+          setError(localError?.message || fallback);
+          return;
+        }
+      }
       setError(getAuthErrorMessage(err, fallback));
     } finally {
       setLoading(false);
