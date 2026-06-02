@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import {
   isBackendUnavailableError,
+  loginLocalGoogleUser,
   loginLocalUser,
   registerLocalUser,
   requestLocalPasswordReset,
@@ -42,6 +43,25 @@ function getAuthErrorMessage(error, fallback) {
   }
 
   return message || fallback;
+}
+
+function decodeGoogleCredential(credential) {
+  const [, payload] = String(credential || "").split(".");
+  if (!payload) return null;
+
+  try {
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const json = decodeURIComponent(
+      atob(padded)
+        .split("")
+        .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
+        .join("")
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
 }
 
 export default function TungzoneAuthUI({ defaultMode = "login" }) {
@@ -92,16 +112,40 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
       window.google.accounts.id.initialize({
         client_id: googleClientId,
         callback: async (response) => {
+          const loginWithLocalGoogle = () => {
+            const googleProfile = decodeGoogleCredential(response.credential);
+            const payload = loginLocalGoogleUser({
+              email: googleProfile?.email,
+              fullName: googleProfile?.name,
+            });
+            login(payload);
+            const redirectTarget = location.state?.from;
+            navigate(redirectTarget || "/");
+          };
+
           try {
             setLoading(true);
             setError("");
             const res = await axiosClient.post("/auth/google", {
               credential: response.credential,
             });
+            if (!res.data?.token || !res.data?.email) {
+              loginWithLocalGoogle();
+              return;
+            }
             login(res.data);
             const redirectTarget = location.state?.from;
             navigate(redirectTarget || "/");
           } catch (err) {
+            if (isBackendUnavailableError(err)) {
+              try {
+                loginWithLocalGoogle();
+                return;
+              } catch (localError) {
+                setError(localError?.message || "Dang nhap Google that bai.");
+                return;
+              }
+            }
             setError(getAuthErrorMessage(err, "Đăng nhập Google thất bại"));
           } finally {
             setLoading(false);

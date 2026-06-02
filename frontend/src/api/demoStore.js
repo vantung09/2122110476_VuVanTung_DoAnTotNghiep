@@ -150,6 +150,41 @@ export function loginLocalUser({ email, password }) {
   return toAuthPayload(account);
 }
 
+export function loginLocalGoogleUser({ email, fullName }) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    throw new Error("Khong lay duoc email tu Google.");
+  }
+
+  const accounts = getAccounts();
+  const existing = accounts.find((account) => account.email === normalizedEmail);
+
+  if (existing) {
+    const next = {
+      ...existing,
+      fullName: existing.fullName || String(fullName || "").trim() || makeNameFromEmail(normalizedEmail),
+      provider: existing.provider || "google",
+    };
+    saveAccounts(accounts.map((account) => (account.id === existing.id ? next : account)));
+    return toAuthPayload(next);
+  }
+
+  const account = {
+    id: makeId("google"),
+    fullName: String(fullName || "").trim() || makeNameFromEmail(normalizedEmail),
+    email: normalizedEmail,
+    password: "",
+    provider: "google",
+    role: "USER",
+    phoneNumber: "",
+    address: "",
+    createdAt: new Date().toISOString(),
+  };
+
+  saveAccounts([...accounts, account]);
+  return toAuthPayload(account);
+}
+
 export function requestLocalPasswordReset(email) {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) throw new Error("Vui long nhap email.");
