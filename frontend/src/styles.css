@@ -9840,3 +9840,391 @@ body {
     min-height: 172px;
   }
 }
+
+/* Compact mobile commerce layout */
+@media (max-width: 640px) {
+  .site-header {
+    background:
+      linear-gradient(180deg, rgba(18, 18, 20, 0.98), rgba(10, 10, 11, 0.98)),
+      #0d0d0e;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .header-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 6px 0 7px;
+    gap: 6px 8px;
+  }
+
+  .brand-lockup {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .brand-logo img {
+    height: 28px;
+    max-width: 118px;
+  }
+
+  .header-actions {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+    justify-self: end;
+    grid-template-columns: repeat(4, 30px) 78px;
+    justify-content: end;
+    gap: 6px;
+  }
+
+  .icon-button,
+  .header-avatar-btn,
+  .notification-bell {
+    width: 30px;
+    height: 30px;
+  }
+
+  .icon-button {
+    background: #25262a;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .icon-button svg,
+  .icon-image {
+    width: 15px;
+    height: 15px;
+  }
+
+  .header-auth-btn {
+    min-height: 30px;
+    width: 78px;
+    padding: 0 7px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    background: #26272b;
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .header-account {
+    width: auto;
+  }
+
+  .header-account-menu,
+  .notification-dropdown {
+    top: 82px;
+  }
+
+  .nav-links {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    gap: 6px;
+    padding: 0 0 1px;
+  }
+
+  .nav-links a,
+  .nav-links button {
+    min-height: 30px;
+    padding: 0 11px;
+    border-radius: 999px;
+    background: #18191b;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.86);
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+
+  .nav-item.active,
+  .nav-links button:hover {
+    background: #2d8cff;
+    border-color: #2d8cff;
+    color: #fff;
+  }
+
+  .tz-section-header {
+    margin-bottom: 9px;
+  }
+
+  .tz-section-kicker {
+    margin-bottom: 2px;
+    font-size: 0.62rem;
+  }
+
+  .tz-section-title {
+    font-size: 1.15rem;
+    line-height: 1.18;
+  }
+
+  .tz-filter-root {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .tz-chip-scroll {
+    gap: 6px;
+  }
+
+  .tz-chip {
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 0.75rem;
+  }
+
+  .tz-chip-icon {
+    font-size: 0.82rem;
+  }
+
+  .tz-toolbar {
+    gap: 7px;
+  }
+
+  .tz-toolbar-left {
+    gap: 8px;
+  }
+
+  .tz-result-count {
+    font-size: 0.78rem;
+  }
+
+  .tz-filter-toggle {
+    min-height: 32px;
+    padding: 0 11px;
+    border-radius: 11px;
+    font-size: 0.76rem;
+  }
+
+  .tz-search-input {
+    min-height: 34px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+  }
+
+  .tz-banner-frame {
+    aspect-ratio: 16 / 7;
+    min-height: 132px;
+    max-height: 156px;
+  }
+
+  .tz-banner-arrow {
+    width: 30px;
+    height: 30px;
+  }
+
+  .tz-banner-dots {
+    bottom: 6px;
+  }
+
+  .tz-policy-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 8px 0 14px;
+    border-radius: 14px;
+  }
+
+  .tz-policy-item {
+    min-height: 58px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 5px;
+    text-align: center;
+  }
+
+  .tz-policy-icon {
+    font-size: 1rem;
+  }
+
+  .tz-policy-body {
+    gap: 0;
+  }
+
+  .tz-policy-body strong {
+    font-size: 0.66rem;
+    line-height: 1.14;
+    white-space: normal;
+  }
+
+  .tz-policy-body span {
+    display: none;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .product-card {
+    border-radius: 14px;
+    background: #2d2d2f;
+  }
+
+  .product-image-wrap {
+    aspect-ratio: 1 / 0.68;
+    margin: 7px 7px 4px;
+    padding: 11px 6px 0;
+  }
+
+  .product-badges {
+    top: 5px;
+    left: 5px;
+    right: 5px;
+    gap: 5px;
+  }
+
+  .product-badge {
+    min-height: 20px;
+    padding: 0 6px;
+    font-size: 0.58rem;
+  }
+
+  .product-variants {
+    display: none;
+  }
+
+  .product-content {
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .product-meta {
+    justify-content: flex-start;
+    gap: 5px;
+    font-size: 0.64rem;
+  }
+
+  .product-brand-line {
+    display: none;
+  }
+
+  .product-stock {
+    min-height: 18px;
+    padding: 0 6px;
+    font-size: 0.62rem;
+  }
+
+  .product-name {
+    min-height: 34px;
+    font-size: 0.76rem;
+    line-height: 1.25;
+    text-align: left;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .product-price-wrap {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .product-price {
+    font-size: 0.9rem;
+    line-height: 1.16;
+  }
+
+  .product-old-price {
+    font-size: 0.66rem;
+  }
+
+  .tz-savings-tag {
+    display: none;
+  }
+
+  .product-actions {
+    padding: 7px 8px 9px;
+  }
+
+  .product-actions-premium {
+    grid-template-columns: 1fr 32px;
+    gap: 5px;
+  }
+
+  .store-action-btn {
+    min-height: 32px;
+    border-radius: 10px;
+    padding: 0 6px;
+  }
+
+  .store-action-content {
+    gap: 4px;
+    font-size: 0.68rem;
+  }
+
+  .store-action-icon-shell {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+  }
+
+  .store-action-icon-svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .store-action-btn-favorite .store-action-content > span:last-child {
+    display: none;
+  }
+
+  .store-action-btn-favorite {
+    padding: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .brand-logo img {
+    height: 26px;
+    max-width: 104px;
+  }
+
+  .header-actions {
+    grid-template-columns: repeat(4, 29px) 72px;
+    gap: 5px;
+  }
+
+  .icon-button,
+  .header-avatar-btn,
+  .notification-bell {
+    width: 29px;
+    height: 29px;
+  }
+
+  .header-auth-btn {
+    width: 72px;
+    font-size: 0.7rem;
+  }
+
+  .nav-links a,
+  .nav-links button {
+    min-height: 29px;
+    padding: 0 10px;
+    font-size: 0.75rem;
+  }
+
+  .tz-banner-frame {
+    min-height: 122px;
+    max-height: 146px;
+  }
+
+  .tz-policy-item {
+    min-height: 54px;
+    padding: 7px 4px;
+  }
+
+  .tz-policy-body strong {
+    font-size: 0.62rem;
+  }
+
+  .product-grid {
+    gap: 7px;
+  }
+
+  .product-price {
+    font-size: 0.84rem;
+  }
+
+  .store-action-content {
+    font-size: 0.64rem;
+  }
+}
