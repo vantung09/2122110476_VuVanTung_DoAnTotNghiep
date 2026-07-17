@@ -3,9 +3,14 @@ import { BACKEND_BASE_URL } from "../config/appConfig";
 const ABSOLUTE_URL_PATTERN = /^https?:\/\//i;
 const SPECIAL_URL_PATTERN = /^(data|blob):/i;
 const LOCAL_IMAGE_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const PUBLIC_BASE_URL = import.meta.env.BASE_URL || "/";
+
+function resolvePublicAsset(path) {
+  return `${PUBLIC_BASE_URL}${String(path || "").replace(/^\/+/, "")}`;
+}
 
 function resolveBackendAsset(path) {
-  return BACKEND_BASE_URL ? `${BACKEND_BASE_URL}${path}` : path;
+  return BACKEND_BASE_URL ? `${BACKEND_BASE_URL}${path}` : resolvePublicAsset(path);
 }
 
 const CATEGORY_FALLBACKS = {
@@ -16,7 +21,7 @@ const CATEGORY_FALLBACKS = {
   "tai nghe": resolveBackendAsset("/images/hinhanh/airpods-4-thumb-650x650.png"),
   loa: resolveBackendAsset("/images/hinhanh/loa-bluetooth-jbl-clip-5-thumb-650x650.png"),
   "phu kien": resolveBackendAsset("/images/hinhanh/apple-pencil-pro-650x650.png"),
-  banner: "/banners/0563809d876094fa2bb7606be2055307.png",
+  banner: resolvePublicAsset("/banners/0563809d876094fa2bb7606be2055307.png"),
 };
 
 const NAME_FALLBACKS = [
@@ -82,7 +87,7 @@ export function resolveProductImageUrl(rawImageUrl) {
   }
 
   if (imageUrl.startsWith("/banners/") || imageUrl.startsWith("/icons/")) {
-    return imageUrl;
+    return resolvePublicAsset(imageUrl);
   }
 
   if (imageUrl.startsWith("/")) {

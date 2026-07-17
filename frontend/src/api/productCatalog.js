@@ -1,6 +1,6 @@
 import axiosClient from "./axiosClient";
 
-const STATIC_PRODUCTS_URL = "/data/products.json";
+const STATIC_PRODUCTS_URL = `${import.meta.env.BASE_URL}data/products.json`;
 
 function normalizeProducts(data) {
   if (Array.isArray(data)) {
