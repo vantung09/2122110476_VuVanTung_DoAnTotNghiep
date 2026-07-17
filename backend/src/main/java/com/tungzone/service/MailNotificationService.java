@@ -28,6 +28,9 @@ public class MailNotificationService {
     @Value("${app.mail.enabled:false}")
     private boolean mailEnabled;
 
+    @Value("${app.mail.local-fallback:false}")
+    private boolean localMailFallback;
+
     @Value("${app.mail.from:no-reply@tungzone.local}")
     private String mailFrom;
 
@@ -127,11 +130,11 @@ public class MailNotificationService {
             return false;
         }
         if (!hasSmtpConfig()) {
-            String message = "Da bat MAIL_ENABLED=true nhung chua cau hinh du MAIL_HOST, MAIL_USERNAME va MAIL_PASSWORD.";
-            if (required) {
+            String message = "Chua cau hinh SMTP day du. Hay dien MAIL_USERNAME va Gmail App Password vao file backend/.env.";
+            if (required && !localMailFallback) {
                 throw new IllegalStateException(message);
             }
-            log.warn(message);
+            log.warn("{}{}", message, localMailFallback ? " Dang dung che do local fallback." : "");
             return false;
         }
         try {
@@ -145,10 +148,10 @@ public class MailNotificationService {
             return true;
         } catch (Exception exception) {
             String message = "Khong gui duoc email den " + to + ": " + exception.getMessage();
-            if (required) {
+            if (required && !localMailFallback) {
                 throw new IllegalStateException(message);
             }
-            log.warn(message);
+            log.warn("{}{}", message, localMailFallback ? " Dang dung che do local fallback." : "");
             return false;
         }
     }

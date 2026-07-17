@@ -101,7 +101,7 @@ public class AuthService {
             boolean emailSent = mailNotificationService.sendPasswordReset(email, token);
             userRepository.save(user);
             if (!emailSent) {
-                message[0] = "Chua cau hinh SMTP nen he thong dang chay che do local. Ma xac thuc cua ban la: " + token;
+                message[0] = "Khong gui duoc email trong moi truong hien tai. He thong dang chay che do local. Ma xac thuc cua ban la: " + token;
             }
         });
 
