@@ -9,7 +9,7 @@ import ProductCardSkeleton from "../components/ProductCardSkeleton";
 import { StoreBagIcon, StoreCheckIcon, StoreHeartIcon } from "../components/StoreActionButton";
 import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoriteContext";
-import { getProductImageUrl, handleProductImageError } from "../utils/productImage";
+import { getProductImageUrl, handleProductImageError, resolvePublicAsset } from "../utils/productImage";
 
 const CATEGORY_CHIPS = [
   { key: "", label: "Tất cả", icon: "✦" },
@@ -38,12 +38,12 @@ const PRICE_RANGES = [
 ];
 
 const HOMEPAGE_BANNERS = [
-  { id: "b1", imageUrl: "/banners/0563809d876094fa2bb7606be2055307.png", alt: "Banner 1" },
-  { id: "b2", imageUrl: "/banners/9550c151fb9ea098db497dbe31f59eaf.jpg", alt: "Banner 2" },
-  { id: "b3", imageUrl: "/banners/9a9b662b46b6c9bc3c4db6d4ebc6c2b8.jpg", alt: "Banner 3" },
-  { id: "b4", imageUrl: "/banners/d0b16b549d82743e1793bef778366361.png", alt: "Banner 4" },
-  { id: "b5", imageUrl: "/banners/ee47b489951f3039bfad24e9840c66a8.png", alt: "Banner 5" },
-  { id: "b6", imageUrl: "/banners/fafecfcac0d54395454c28fd5a6bcc84.jpg", alt: "Banner 6" },
+  { id: "b1", imageUrl: resolvePublicAsset("/banners/0563809d876094fa2bb7606be2055307.png"), alt: "Banner 1" },
+  { id: "b2", imageUrl: resolvePublicAsset("/banners/9550c151fb9ea098db497dbe31f59eaf.jpg"), alt: "Banner 2" },
+  { id: "b3", imageUrl: resolvePublicAsset("/banners/9a9b662b46b6c9bc3c4db6d4ebc6c2b8.jpg"), alt: "Banner 3" },
+  { id: "b4", imageUrl: resolvePublicAsset("/banners/d0b16b549d82743e1793bef778366361.png"), alt: "Banner 4" },
+  { id: "b5", imageUrl: resolvePublicAsset("/banners/ee47b489951f3039bfad24e9840c66a8.png"), alt: "Banner 5" },
+  { id: "b6", imageUrl: resolvePublicAsset("/banners/fafecfcac0d54395454c28fd5a6bcc84.jpg"), alt: "Banner 6" },
 ];
 
 const HOME_POLICIES = [

@@ -6,6 +6,7 @@ import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoriteContext";
 import NotificationBell from "./NotificationBell";
 import logo from "../assets/tungzone-logo.png";
+import { resolvePublicAsset } from "../utils/productImage";
 
 const NAV_ITEMS = [
   { key: "iphone", label: "iPhone" },
@@ -260,12 +261,12 @@ export default function Header() {
           <NotificationBell />
 
           <Link to="/favorites" className="icon-button icon-button-fav" aria-label="Yêu thích">
-            <img src="/icons/heart.png" alt="" className="icon-image" />
+            <img src={resolvePublicAsset("/icons/heart.png")} alt="" className="icon-image" />
             {favoriteCount > 0 && <span className="icon-badge">{favoriteCount}</span>}
           </Link>
 
           <Link to="/cart" className="icon-button icon-button-cart" aria-label="Giỏ hàng">
-            <img src="/icons/cart.png" alt="" className="icon-image" />
+            <img src={resolvePublicAsset("/icons/cart.png")} alt="" className="icon-image" />
             {cartCount > 0 && <span className="icon-badge">{cartCount}</span>}
           </Link>
 

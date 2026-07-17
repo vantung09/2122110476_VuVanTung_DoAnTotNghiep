@@ -5,7 +5,7 @@ const SPECIAL_URL_PATTERN = /^(data|blob):/i;
 const LOCAL_IMAGE_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const PUBLIC_BASE_URL = import.meta.env.BASE_URL || "/";
 
-function resolvePublicAsset(path) {
+export function resolvePublicAsset(path) {
   return `${PUBLIC_BASE_URL}${String(path || "").replace(/^\/+/, "")}`;
 }
 
