@@ -13,10 +13,22 @@ Du an hien chay theo huong **monolith**:
 tungzone/
 |-- backend/       # Spring Boot monolith
 |-- frontend/      # React + Vite
+|-- database/      # SQL dump va du lieu mau MySQL
 |-- .github/       # Workflow deploy frontend neu can
 |-- .vscode/       # Task VS Code neu dung
 `-- vercel.json    # Cau hinh deploy frontend
 ```
+
+## Khoi tao database
+
+Tao database `tung_zone` trong MySQL 8, sau do import file `database/tung_zone.sql`.
+
+```powershell
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS tung_zone CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+mysql -u root -p tung_zone < database\tung_zone.sql
+```
+
+File SQL gom cau truc bang va du lieu mau de co the kiem tra website ngay sau khi chay.
 
 ## Yeu Cau
 
@@ -33,14 +45,14 @@ Chay MySQL truoc.
 Terminal 1: chay backend.
 
 ```powershell
-cd D:\2122110476_VuVanTung_DOANTN\tungzone\backend
+cd backend
 mvn spring-boot:run
 ```
 
 Terminal 2: chay frontend.
 
 ```powershell
-cd D:\2122110476_VuVanTung_DOANTN\tungzone\frontend
+cd frontend
 npm install
 npm run dev
 ```
@@ -89,7 +101,7 @@ MAIL_FROM=your-email@gmail.com
 Chi can set bien moi truong khi may ban dung cau hinh khac, vi du MySQL co mat khau:
 
 ```powershell
-cd D:\2122110476_VuVanTung_DOANTN\tungzone\backend
+cd backend
 $env:DB_PASSWORD="mat_khau_mysql_cua_ban"
 mvn spring-boot:run
 ```
