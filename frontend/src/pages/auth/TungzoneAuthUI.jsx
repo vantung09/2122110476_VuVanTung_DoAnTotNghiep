@@ -79,11 +79,8 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
   const [success, setSuccess] = useState("");
   const [resetStep, setResetStep] = useState("request");
   const [loading, setLoading] = useState(false);
-  const [authInputsUnlocked, setAuthInputsUnlocked] = useState(false);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const hasGoogleClientId = googleClientId && googleClientId !== "YOUR_CLIENT_ID";
-
-  const unlockAuthInputs = () => setAuthInputsUnlocked(true);
 
   useEffect(() => {
     if (location.pathname.includes("register")) {
@@ -97,10 +94,6 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
     if (!user) return;
     navigate("/", { replace: true });
   }, [user, navigate]);
-
-  useEffect(() => {
-    setAuthInputsUnlocked(false);
-  }, [mode, resetStep]);
 
   useEffect(() => {
     if (!hasGoogleClientId) return;
@@ -227,7 +220,6 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
     setMode(nextMode);
     setError("");
     setSuccess("");
-    setAuthInputsUnlocked(false);
     setResetStep("request");
     navigate(nextMode === "register" ? "/register" : "/login");
   };
@@ -587,9 +579,7 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                           autoComplete="off"
                           autoCapitalize="none"
                           spellCheck="false"
-                          readOnly={!authInputsUnlocked}
                           value={resetForm.email}
-                          onFocus={unlockAuthInputs}
                           onChange={(event) => setResetForm((prev) => ({ ...prev, email: event.target.value }))}
                           className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
                         />
@@ -617,9 +607,7 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                               name="tz-reset-new-secret"
                               placeholder="Nhập mật khẩu mới"
                               autoComplete="new-password"
-                              readOnly={!authInputsUnlocked}
                               value={resetForm.newPassword}
-                              onFocus={unlockAuthInputs}
                               onChange={(event) => setResetForm((prev) => ({ ...prev, newPassword: event.target.value }))}
                               className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
                             />
@@ -631,9 +619,7 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                               name="tz-reset-confirm-secret"
                               placeholder="Nhập lại mật khẩu mới"
                               autoComplete="new-password"
-                              readOnly={!authInputsUnlocked}
                               value={resetForm.confirmNewPassword}
-                              onFocus={unlockAuthInputs}
                               onChange={(event) => setResetForm((prev) => ({ ...prev, confirmNewPassword: event.target.value }))}
                               className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
                             />
@@ -679,9 +665,7 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                       autoComplete="off"
                       autoCapitalize="none"
                       spellCheck="false"
-                      readOnly={!authInputsUnlocked}
                       value={form.email}
-                      onFocus={unlockAuthInputs}
                       onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
                       className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
                     />
@@ -695,9 +679,7 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                         name={mode === "register" ? "tz-register-secret" : "tz-login-secret"}
                         placeholder="Nhập mật khẩu"
                         autoComplete={mode === "register" ? "new-password" : "off"}
-                        readOnly={!authInputsUnlocked}
                         value={form.password}
-                        onFocus={unlockAuthInputs}
                         onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
                         className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 pr-16 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
                       />
@@ -722,9 +704,7 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                           name="tz-register-confirm-secret"
                           placeholder="Nhập lại mật khẩu"
                           autoComplete="new-password"
-                          readOnly={!authInputsUnlocked}
                           value={form.confirmPassword}
-                          onFocus={unlockAuthInputs}
                           onChange={(event) => setForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
                           className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 pr-16 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5"
                         />
@@ -748,7 +728,6 @@ export default function TungzoneAuthUI({ defaultMode = "login" }) {
                           setMode("forgot");
                           setError("");
                           setSuccess("");
-                          setAuthInputsUnlocked(false);
                           setResetForm(DEFAULT_RESET_FORM);
                         }}
                       >
